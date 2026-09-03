@@ -1,0 +1,59 @@
+name: Deploy CW Runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cw-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://araucariadx.com/cw/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static web app
+        run: pnpm build
+
+      - name: Install FTPS client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lftp
+
+      - name: Upload the /cw site
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          lftp -c "
+            set cmd:fail-exit true
+            set ftp:ssl-force true
+            set ssl:verify-certificate true
+            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\"
+            mirror --reverse --verbose apps/web/dist \"$FTP_SERVER_DIR\"
+            bye
+          "
