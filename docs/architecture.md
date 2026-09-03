@@ -1,0 +1,41 @@
+# Arquitetura
+
+## Separação de responsabilidades
+
+| Camada | Responsabilidade | Não pode fazer |
+| --- | --- | --- |
+| `apps/web` | interface, teclado, áudio CW, preferências locais | decidir score verificado ou a resposta de um QSO |
+| `runner-core` | regras puras de contest e estados de sessão | acessar DOM, relógio, rede ou Web Audio |
+| `protocol` | contratos de mensagens e versão de protocolo | conter segredo de cenário |
+| `runner-server` | cenário, relógio oficial, validação, score e ranking | confiar em score/timestamp fornecido pelo cliente |
+
+## Dois modos
+
+### Treino
+
+A sessão roda totalmente no navegador. É rápida, funciona com conexão instável e salva resultados locais. Não entra em ranking público.
+
+### Desafio verificado
+
+O servidor é autoritativo. Ele cria os cenários, mantém o relógio e calcula o resultado. A conexão é persistente e autenticada; as ações do operador são numeradas e auditáveis.
+
+O cliente recebe áudio a reproduzir, controles visuais e estado mínimo de apresentação. Não recebe o texto dos callsigns/exchanges nem uma semente que permita antecipá-los.
+
+## Fluxo de uma sessão verificada
+
+1. O usuário inicia com um gesto explícito; o navegador habilita o áudio.
+2. O servidor cria a sessão e registra configuração e versão do protocolo.
+3. O servidor agenda os estímulos e entrega pequenos blocos de áudio por canal seguro em tempo real.
+4. O navegador envia ações: caracteres digitados, troca RUN/S&P, macros e log.
+5. O servidor valida sequência, tempo e conteúdo, atualiza score e devolve apenas o estado necessário para a tela.
+6. O servidor grava o histórico para auditoria e detecção de anomalias.
+
+Atrasar intencionalmente a conexão não para o relógio do servidor: isso só reduz a chance de concluir a sessão ou a torna inválida.
+
+## Limite de integridade
+
+Não existe garantia absoluta contra alguém que ouve o áudio e usa um decodificador externo. A meta é impedir fraude trivial no DevTools e produzir evidência suficiente para que o ranking seja recreativo e confiável. Para competição de alto impacto, seria necessária supervisão humana.
+
+## Hospedagem
+
+A interface gerada pelo Vite é estática e pode viver em `araucariadx.com/cw/`. O modo verificado requer um serviço separado com WebSocket seguro (ou WebRTC em etapa posterior), banco de dados e observabilidade; não deve depender do PHP do ranking existente.

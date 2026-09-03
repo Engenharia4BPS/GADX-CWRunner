@@ -1,0 +1,33 @@
+:root {
+  color: #f1f6ec;
+  background: #062b22;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at top, #0c5541, #062b22 56%); }
+button, input { font: inherit; }
+.runner-shell { width: min(980px, calc(100% - 2rem)); margin: 3rem auto; padding: 1.6rem; border: 1px solid #609c74; border-radius: 12px; background: #0a352a; box-shadow: 0 22px 60px #00150e99; }
+.topbar, .controls, .dashboard { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.topbar { justify-content: space-between; border-bottom: 1px solid #447a5a; padding-bottom: 1rem; }
+.eyebrow, h2 { margin: 0; color: #b7dd9b; font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
+h1 { margin: .18rem 0 0; font-family: Georgia, serif; font-size: 1.75rem; color: #f3d56b; }
+.session-status { font-size: .78rem; color: #c8e6d0; letter-spacing: .08em; }
+.session-status span { display: inline-block; width: .65rem; height: .65rem; background: #8acb42; border-radius: 50%; margin-right: .4rem; }
+.entry-grid { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: .6rem; margin: 1.3rem 0 .9rem; }
+label { color: #b7dd9b; font-size: .73rem; font-weight: 700; letter-spacing: .07em; }
+input { width: 100%; margin-top: .28rem; min-height: 2.6rem; border: 1px solid #78a884; border-radius: 4px; background: #eaf2e2; color: #10241c; padding: .45rem .55rem; font-weight: 700; }
+.callsign-field input { font-size: 1.2rem; letter-spacing: .08em; }
+.controls { justify-content: flex-start; margin: 1rem 0; }
+.primary, .macros button { border: 1px solid #d9b84e; border-radius: 4px; background: #f1cf61; color: #182a18; padding: .55rem .8rem; cursor: pointer; font-size: .78rem; font-weight: 800; letter-spacing: .05em; }
+.macros { display: grid; grid-template-columns: repeat(6, 1fr); gap: .45rem; }
+.macros button { background: #e8efe2; border-color: #86a98a; padding: .48rem .25rem; }
+.wpm { width: 8rem; } .wpm input { display: inline-block; width: 4.4rem; margin-left: .35rem; }
+.toggle { color: #eef7e9; cursor: pointer; } .toggle input { width: auto; min-height: auto; margin: 0 .3rem 0 0; accent-color: #d9b84e; }
+.dashboard { margin-top: 1.15rem; }
+.panel { flex: 1; min-width: 10rem; padding: .85rem; border: 1px solid #447a5a; border-radius: 6px; background: #082e24; }
+.panel strong { display: inline-block; margin-top: .35rem; color: #f3d56b; font-size: 1.65rem; }
+.panel span { color: #c8e6d0; font-size: .78rem; }
+.conditions { flex: 2; } .conditions div { display: flex; gap: 1.1rem; margin-top: .35rem; } .conditions input { vertical-align: middle; min-height: 0; padding: 0; accent-color: #d9b84e; }
+footer { margin-top: 1.25rem; color: #c8e6d0; font-size: .86rem; }
+@media (max-width: 700px) { .entry-grid { grid-template-columns: repeat(2, 1fr); } .callsign-field { grid-column: span 2; } .macros { grid-template-columns: repeat(3, 1fr); } .runner-shell { margin: 1rem auto; } }
