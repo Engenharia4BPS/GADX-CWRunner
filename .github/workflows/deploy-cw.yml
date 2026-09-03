@@ -45,6 +45,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes lftp
 
+      - name: Inspect FTPS certificate
+        run: |
+          handshake_file="$RUNNER_TEMP/ftps-handshake.pem"
+          set +e
+          timeout 20 openssl s_client             -connect ftp.araucariadx.com:21             -starttls ftp             -servername ftp.araucariadx.com             -showcerts             </dev/null > "$handshake_file" 2>/dev/null
+          set -e
+
+          if ! openssl x509 -in "$handshake_file"             -noout -subject -issuer -ext subjectAltName; then
+            echo "::error title=Certificado indisponível::Não foi possível ler o certificado público do endpoint FTPS."
+            exit 1
+          fi
+
       - name: Upload the /cw site
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
