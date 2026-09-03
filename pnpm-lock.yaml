@@ -9,6 +9,10 @@ importers:
   .: {}
 
   apps/web:
+    dependencies:
+      '@gadx/runner-core':
+        specifier: workspace:*
+        version: link:../../packages/runner-core
     devDependencies:
       typescript:
         specifier: ^5.7.3

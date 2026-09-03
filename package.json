@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @gadx/web dev",
     "build": "pnpm --filter @gadx/web build",
-    "check": "pnpm -r check"
+    "check": "pnpm -r check",
+    "test": "pnpm -r --if-present test"
   }
 }

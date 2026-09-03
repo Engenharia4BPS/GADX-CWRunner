@@ -8,6 +8,9 @@
     "build": "tsc -b && vite build",
     "check": "tsc -b --pretty false"
   },
+  "dependencies": {
+    "@gadx/runner-core": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.7.3",
     "vite": "^6.1.0"

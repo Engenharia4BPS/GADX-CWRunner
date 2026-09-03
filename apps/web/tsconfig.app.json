@@ -5,6 +5,10 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "@gadx/runner-core": ["../../packages/runner-core/src/index.ts"]
+    },
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -13,5 +17,5 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["src"]
+  "include": ["src", "vite-env.d.ts"]
 }
