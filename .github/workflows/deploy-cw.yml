@@ -49,22 +49,32 @@ jobs:
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
         run: |
-          for key in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_SERVER_DIR; do
+          for key in FTP_SERVER FTP_USERNAME LFTP_PASSWORD FTP_SERVER_DIR; do
             if [ -z "${!key}" ]; then
               echo "::error title=Secret ausente::Cadastre o Secret $key antes do deploy."
               exit 1
             fi
           done
 
+          if [[ ! "$FTP_SERVER" =~ ^[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]]; then
+            echo "::error title=FTP_SERVER inválido::Use somente o host e a porta, por exemplo ftp.araucariadx.com:21."
+            exit 1
+          fi
+
+          if [[ ! "$FTP_SERVER_DIR" =~ ^/?[A-Za-z0-9._/-]+/?$ ]]; then
+            echo "::error title=FTP_SERVER_DIR inválido::Use somente o caminho, por exemplo public_html/cw/."
+            exit 1
+          fi
+
           command_file="$RUNNER_TEMP/deploy.lftp"
           cat > "$command_file" <<EOF
           set cmd:fail-exit true
           set ftp:ssl-force true
           set ssl:verify-certificate true
-          open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER"
+          open --user "$FTP_USERNAME" --env-password "$FTP_SERVER"
           mirror --reverse --verbose apps/web/dist "$FTP_SERVER_DIR"
           bye
           EOF
