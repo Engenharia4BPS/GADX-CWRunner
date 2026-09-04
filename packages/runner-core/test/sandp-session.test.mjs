@@ -39,6 +39,17 @@ test("F6 repete imediatamente a estação atual", () => {
   assert.ok(events.cancelled.length >= 1);
 });
 
+test("pausar e retomar CQ cancela a chamada pendente", () => {
+  const { controller, stations, events } = scenario();
+  controller.start();
+  controller.tune(stations[2].id);
+  const firstTimer = events.scheduled.at(-1).id;
+  controller.pauseCq();
+  assert.ok(events.cancelled.includes(firstTimer));
+  assert.equal(controller.resumeCq(), true);
+  assert.equal(events.plays.at(-1), stations[2].callsign);
+});
+
 test("parada equivalente ao Esc cancela timers, áudio e seleção", () => {
   const { controller, stations, engine, events } = scenario();
   controller.start();

@@ -5,6 +5,7 @@ export * from "./bandmap.js";
 export * from "./callsigns.js";
 export * from "./rx-environment.js";
 export * from "./sandp-session.js";
+export * from "./sp-qso.js";
 
 /** Estados do fluxo local de um QSO de contest. */
 export const QSO_TRAINING_STATES = {

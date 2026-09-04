@@ -69,8 +69,7 @@ export class BandmapView {
       button.textContent = station.callsign;
       button.title = this.tooltip(station, now);
       button.setAttribute("aria-label", this.tooltip(station, now));
-      button.addEventListener("click", () => this.actions.select(station.id, false));
-      button.addEventListener("dblclick", () => this.actions.select(station.id, true));
+      button.addEventListener("click", () => this.actions.select(station.id, true));
       plot.append(button);
     });
 

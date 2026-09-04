@@ -7,6 +7,7 @@ const cwAudioSource = await readFile(new URL("../../../apps/web/src/cw-audio.ts"
 const rxAudioSource = await readFile(new URL("../../../apps/web/src/rx-environment.ts", import.meta.url), "utf8");
 const callsignSource = await readFile(new URL("../../../apps/web/src/callsign-source.ts", import.meta.url), "utf8");
 const bandmapViewSource = await readFile(new URL("../../../apps/web/src/bandmap-view.ts", import.meta.url), "utf8");
+const spControllerSource = await readFile(new URL("../../../apps/web/src/sp-qso-controller.ts", import.meta.url), "utf8");
 
 function functionLine(source, name) {
   return source.split("\n").find((line) => line.includes(`function ${name}`)) ?? "";
@@ -59,4 +60,12 @@ test("Bandmap usa indicativos HTML clicáveis e protege o indicativo principal d
   assert.match(bandmapViewSource, /document\.createElement\("button"\)/);
   assert.match(trainingSource, /setQrmCallsigns\(callsignDatabase, \[station\.callsign\]\)/);
   assert.match(trainingSource, /selectCallsigns\(BANDMAP_40M\.stationCount, \[preferences\.operatorCall\]\)/);
+});
+
+test("controle S&P invalida callbacks antigos ao abortar ou trocar de estação", () => {
+  assert.match(spControllerSource, /private generation = 0/);
+  assert.match(spControllerSource, /generation === this\.generation/);
+  assert.match(spControllerSource, /this\.timers\.forEach/);
+  assert.match(trainingSource, /spQsoController\.abort\(\)/);
+  assert.match(trainingSource, /spQsoController\.begin\(/);
 });

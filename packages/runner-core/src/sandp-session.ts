@@ -60,6 +60,18 @@ export class SandPSessionController {
     return true;
   }
 
+  pauseCq(): void {
+    this.cancelCurrentCq();
+  }
+
+  resumeCq(): boolean {
+    const station = this.currentStation;
+    if (!this.active || !station || station.status === "worked") return false;
+    this.cancelCurrentCq();
+    this.playAndSchedule(station);
+    return true;
+  }
+
   stop(clearSelection = true): void {
     this.active = false;
     this.cancelCurrentCq();

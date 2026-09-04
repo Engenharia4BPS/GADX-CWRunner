@@ -51,3 +51,11 @@ A primeira etapa do modo S&P mantém a separação existente:
 - o controlador web reutiliza o mesmo `AudioContext`, `CwAudioEngine`, ambiente RX e carregador de indicativos do modo RUN.
 
 O Bandmap local pode revelar os indicativos porque pertence exclusivamente ao treino não verificado. Essa representação não deve ser reutilizada no futuro modo verificado.
+
+### QSO S&P interativo
+
+`sp-qso.ts` é um reducer puro: recebe cenário e eventos de operador/estação, devolvendo novo estado e efeitos declarativos. Ele não acessa relógio, áudio, DOM, armazenamento, rede ou aleatoriedade direta. Cada cenário limita os incidentes a dois e usa uma fonte aleatória injetada, para que uma futura sessão verificada possa reproduzir exatamente o mesmo contato.
+
+`SpQsoController`, no cliente, executa os efeitos através do motor CW e mantém um contador de geração para invalidar timers pendentes ao trocar de spot, limpar o QSO, sair do S&P ou encerrar a sessão. O QSO local só é contabilizado após o `TU` da estação; então o spot é marcado como trabalhado.
+
+O motor separa o estado lógico do contato (o que falta receber) do estado físico (escutando, copiando, preparando ou transmitindo). A conferência do CALL/RST/número acontece somente após o `TU`: a estação reage apenas às mensagens transmitidas pelo operador, enquanto o log local recebe `OK`, `CALL`, `RST`, `NR`, `NIL` ou `DUP`.
