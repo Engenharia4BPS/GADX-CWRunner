@@ -37,7 +37,7 @@ export class SpQsoController {
     const events: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", SpQsoEvent> = {
       F2: { type: "operator-send-exchange" },
       F3: { type: "operator-tu" },
-      F4: { type: "operator-call" },
+      F4: { type: "operator-call", text: this.state.scenario?.operatorCall ?? "" },
       F6: { type: "operator-repeat" },
       F8: { type: "operator-agn" },
       F9: { type: "operator-number-request" },
@@ -54,7 +54,7 @@ export class SpQsoController {
   enter(call: string, rst: string, exchange: string): void {
     this.entry = { call, rst, exchange };
     const phase = this.state.phase;
-    if (phase === "listening-cq" || phase === "station-requesting-call") this.dispatch({ type: "operator-call" });
+    if (phase === "listening-cq" || phase === "station-requesting-call") this.dispatch({ type: "operator-call", text: this.state.scenario?.operatorCall ?? "" });
     else if (phase === "station-requesting-number") this.dispatch({ type: "operator-send-exchange" });
     else if (phase === "station-requesting-again") this.dispatch({ type: "operator-repeat" });
     else if (phase === "receiving-exchange" && (!call.trim() || call.includes("?"))) this.dispatch({ type: "operator-call-request" });

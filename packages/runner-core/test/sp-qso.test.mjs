@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareCallsign, INITIAL_SP_QSO_STATE, createSpQsoScenario, reduceSpQso } from "../src/sp-qso.ts";
+import { checkSpQso, compareCallsign, INITIAL_SP_QSO_STATE, createSpQsoScenario, reduceSpQso } from "../src/sp-qso.ts";
 
 const base = (incidents = []) => ({ stationCall: "K1ABC", operatorCall: "PY5XT", exchange: "123", incidents });
 const effect = (transition, type) => transition.effects.find((item) => item.type === type);
@@ -121,6 +121,38 @@ test("cenario e deterministico quando a fonte aleatoria e injetada", () => {
   assert.equal(scenario.stationCall, "K1ABC");
   assert.equal(scenario.exchange, "007");
   assert.equal(scenario.incidents.length, 2);
+});
+
+test("politica morse decide a conversa sem mascarar a conferencia final", () => {
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.callCopyPolicy = { model: "morse", skill: 3, acceptAlmost: false, rejectExact: false };
+  let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario, serial: "001" });
+  result = step(result.state, { type: "operator-call", text: "PY5?T" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.text, "CALL?");
+  result = step(result.state, { type: "operator-call", text: "PY5XT" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.message, "exchange");
+  assert.equal(checkSpQso({ call: "K1AB", rst: "599", exchange: "123" }, scenario), "CALL");
+});
+
+test("rejectExact solicita somente uma confirmacao", () => {
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.callCopyPolicy = { model: "morse", skill: 2, acceptAlmost: false, rejectExact: true };
+  let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario, serial: "001" });
+  result = step(result.state, { type: "operator-call", text: "PY5XT" }); result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.text, "CALL?");
+  result = step(result.state, { type: "operator-call", text: "PY5XT" }); result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.message, "exchange");
+});
+
+test("acceptAlmost prossegue no radio, mas check final continua CALL", () => {
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.callCopyPolicy = { model: "morse", skill: 3, acceptAlmost: true, rejectExact: false };
+  let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario, serial: "001" });
+  result = step(result.state, { type: "operator-call", text: "PY5?T" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.message, "exchange");
 });
 
 test("abortar QSO incompleto nao registra e limpa a entrada", () => {

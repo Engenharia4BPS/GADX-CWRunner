@@ -1,4 +1,5 @@
 export type CallCopyKind = "exact" | "almost" | "wrong";
+export interface CallCopyPolicy { model: "legacy" | "morse"; skill: 1 | 2 | 3; acceptAlmost: boolean; rejectExact: boolean; }
 export interface CallCopyResult { kind: CallCopyKind; normalizedExpected: string; normalizedCopied: string; hasWildcard: boolean; distance: number; reason: string; }
 
 const normalize = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9/?]/g, "");
@@ -12,4 +13,10 @@ export function analyzeCallCopy(expected: string, copied: string): CallCopyResul
   const wildcardFits = hasWildcard && isSubsequence(known, normalizedExpected);
   const plausible = wildcardFits || normalizedExpected.includes(known) || isSubsequence(known, normalizedExpected) || distance <= 1;
   return { kind: plausible ? "almost" : "wrong", normalizedExpected, normalizedCopied, hasWildcard, distance, reason: plausible ? hasWildcard ? "trecho-desconhecido" : "alinhamento-plausivel" : "sem-alinhamento" };
+}
+
+export function resolveCallCopy(expected: string, copied: string, policy: CallCopyPolicy): CallCopyResult {
+  const result = analyzeCallCopy(expected, copied);
+  if (policy.model === "morse") return result;
+  return result.kind === "exact" ? result : { ...result, kind: "wrong", reason: "legacy-sem-copia-parcial" };
 }
