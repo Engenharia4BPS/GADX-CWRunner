@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check": "tsc -b --pretty false",
-    "test": "node --experimental-strip-types --test test/*.test.mjs"
+    "test": "node --experimental-loader ./test/runner-core-test-loader.mjs --experimental-strip-types --test test/*.test.mjs"
   },
   "dependencies": {
     "@gadx/runner-core": "workspace:*"

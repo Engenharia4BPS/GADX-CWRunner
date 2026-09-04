@@ -1,4 +1,4 @@
-import { checkSpQso, INITIAL_SP_QSO_STATE, reduceSpQso, type QsoCheck, type SpQsoEffect, type SpQsoEvent, type SpQsoScenario, type SpQsoState, type SpStationMessage } from "../../../packages/runner-core/src/sp-qso.ts";
+import { checkSpQso, INITIAL_SP_QSO_STATE, reduceSpQso, type QsoCheck, type SpQsoEffect, type SpQsoEvent, type SpQsoScenario, type SpQsoState, type SpStationMessage } from "@gadx/runner-core";
 
 export interface SpQsoControllerPorts {
   playOperator(text: string): number;
@@ -18,6 +18,7 @@ export class SpQsoController {
   private state: SpQsoState = INITIAL_SP_QSO_STATE;
   private generation = 0;
   private readonly timers = new Set<number>();
+  private replyTimeout?: number;
   private readonly ports: SpQsoControllerPorts;
   private entry = { call: "", rst: "", exchange: "" };
 
@@ -90,6 +91,8 @@ export class SpQsoController {
     if (effect.type === "mark-worked") { this.ports.markWorked(); return; }
     if (effect.type === "restart-cq") { this.ports.restartCq(); return; }
     if (effect.type === "update-spot-status") return;
+    if (effect.type === "cancel-reply-timeout") { this.cancelReplyTimeout(); return; }
+    if (effect.type === "start-reply-timeout") { this.cancelReplyTimeout(); const generation = this.generation; let timer = 0; timer = this.ports.schedule(() => { this.timers.delete(timer); if (this.replyTimeout === timer) this.replyTimeout = undefined; if (generation === this.generation) this.dispatch({ type: "reply-timeout" }); }, effect.delayMs); this.replyTimeout = timer; this.timers.add(timer); return; }
     if (effect.type === "play-operator") {
       const duration = this.ports.playOperator(effect.text);
       this.defer(() => this.dispatch({ type: "operator-finished" }), duration + 80);
@@ -115,8 +118,16 @@ export class SpQsoController {
 
   private cancel(stopAudio: boolean): void {
     this.generation += 1;
+    this.replyTimeout = undefined;
     this.timers.forEach((timer) => this.ports.cancelSchedule(timer));
     this.timers.clear();
     if (stopAudio) this.ports.stopCw();
+  }
+
+  private cancelReplyTimeout(): void {
+    if (this.replyTimeout === undefined) return;
+    this.ports.cancelSchedule(this.replyTimeout);
+    this.timers.delete(this.replyTimeout);
+    this.replyTimeout = undefined;
   }
 }

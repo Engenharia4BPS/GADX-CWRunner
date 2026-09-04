@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createSpQsoScenario } from "../../../packages/runner-core/src/sp-qso.ts";
+import { createSpQsoScenario } from "@gadx/runner-core";
 import { SpQsoController } from "../src/sp-qso-controller.ts";
 
 function fakePorts() {
@@ -18,6 +18,7 @@ function fakePorts() {
       cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: () => {}, recordError: () => {}, markWorked: () => {}, restartCq: () => {},
     },
     runDelay: (delayMs) => { const item = [...timers.entries()].find(([, timer]) => timer.delayMs === delayMs); assert.ok(item, `timer de ${delayMs} ms`); timers.delete(item[0]); item[1].action(); },
+    hasDelay: (delayMs) => [...timers.values()].some((timer) => timer.delayMs === delayMs),
   };
 }
 
@@ -48,4 +49,19 @@ test("abortar antes da resposta atrasada impede o CW da estação", () => {
   fake.runDelay(180);
   controller.abort();
   assert.deepEqual(fake.station, []);
+});
+
+test("timeout começa após o exchange e F2 o cancela", () => {
+  const fake = fakePorts();
+  const controller = new SpQsoController(fake.ports);
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.profile = { style: "precise", replyTimeoutMs: 3000, acknowledgement: "tu", repeatsExchangeOnTimeout: false };
+  controller.begin(scenario, "001");
+  controller.macro("F4");
+  fake.runDelay(180);
+  fake.runDelay(250);
+  fake.runDelay(180);
+  assert.ok(fake.hasDelay(3000));
+  controller.macro("F2");
+  assert.equal(fake.hasDelay(3000), false);
 });
