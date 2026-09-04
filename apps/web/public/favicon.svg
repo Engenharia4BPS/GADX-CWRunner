@@ -1,4 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Araucaria CW Runner">
-  <rect width="64" height="64" rx="12" fill="#003d29"/>
-  <path fill="#f2bd21" d="M30 53h4V34h12l-7-5h10L38 22h8L32 10 18 22h8L15 29h10l-7 5h12v19Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Araucaria CW Runner</title>
+  <desc id="desc">Manipulador telegráfico tradicional dourado sobre fundo verde</desc>
+  <rect x="2" y="2" width="60" height="60" rx="13" fill="#004D36"/>
+
+  <!-- Base e pés -->
+  <rect x="7" y="44" width="50" height="8" rx="3" fill="#F2B91F"/>
+  <rect x="11" y="49" width="9" height="5" rx="2" fill="#F2B91F"/>
+  <rect x="44" y="49" width="9" height="5" rx="2" fill="#F2B91F"/>
+
+  <!-- Suporte central e pivô -->
+  <path d="M25 44 27.5 29h9L39 44Z" fill="#F2B91F"/>
+
+  <!-- Alavanca -->
+  <path d="M12 30.5 51 27.3l.5 5.3L12.5 35Z" fill="#F2B91F"/>
+
+  <!-- Pivô aparente -->
+  <circle cx="32" cy="30.1" r="5.5" fill="#F2B91F"/>
+  <circle cx="32" cy="30.1" r="2.1" fill="#004D36"/>
+
+  <!-- Contato esquerdo -->
+  <rect x="10" y="22" width="9" height="4.5" rx="1.8" fill="#F2B91F"/>
+  <rect x="13" y="26" width="3" height="5.5" rx="1" fill="#F2B91F"/>
+  <rect x="13" y="37" width="3" height="7" rx="1" fill="#F2B91F"/>
+
+  <!-- Haste e manopla -->
+  <rect x="48" y="18" width="5" height="12" rx="1.5" fill="#F2B91F"/>
+  <circle cx="50.5" cy="14.5" r="7" fill="#F2B91F"/>
 </svg>
