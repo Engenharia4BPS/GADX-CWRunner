@@ -82,6 +82,7 @@ test("F8, F9 e F10 transmitem primeiro a macro do operador", () => {
     assert.doesNotMatch(effect(result, "status")?.label ?? "", /123/);
     result = step(result.state, { type: "station-finished", message });
     assert.equal(result.state.phase, "receiving-exchange");
+    assert.equal(result.state.logical, "need-operator-number");
   }
 });
 

@@ -95,8 +95,12 @@ export class SpQsoController {
       this.defer(() => this.dispatch({ type: "operator-finished" }), duration + 80);
       return;
     }
-    const duration = this.ports.playStation(effect.text);
-    this.defer(() => this.dispatch({ type: "station-finished", message: effect.message as SpStationMessage }), duration + 80 + (effect.delayMs ?? 0));
+    const playStation = (): void => {
+      const duration = this.ports.playStation(effect.text);
+      this.defer(() => this.dispatch({ type: "station-finished", message: effect.message as SpStationMessage }), duration + 80);
+    };
+    if (effect.delayMs && effect.delayMs > 0) this.defer(playStation, effect.delayMs);
+    else playStation();
   }
 
   private defer(action: () => void, delayMs: number): void {

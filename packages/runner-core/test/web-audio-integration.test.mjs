@@ -72,6 +72,9 @@ test("controle S&P invalida callbacks antigos ao abortar ou trocar de estação"
 
 test("F2 preserva a entrada atual e pedidos S&P passam pelo CW do operador", () => {
   assert.match(spControllerSource, /this\.entry = \{ \.\.\.entry \}/);
-  assert.match(spControllerSource, /effect\.delayMs/);
+  assert.match(spControllerSource, /const playStation = \(\): void/);
+  assert.match(spControllerSource, /this\.defer\(playStation, effect\.delayMs\)/);
+  assert.match(spControllerSource, /const duration = this\.ports\.playStation\(effect\.text\)/);
+  assert.doesNotMatch(spControllerSource, /duration \+ 80 \+ \(effect\.delayMs/);
   assert.match(trainingSource, /spQsoController\.macro\(key, \{ call: callsign\.value/);
 });
