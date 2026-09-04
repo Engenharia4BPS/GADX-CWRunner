@@ -6,6 +6,7 @@ const trainingSource = await readFile(new URL("../../../apps/web/src/training.ts
 const cwAudioSource = await readFile(new URL("../../../apps/web/src/cw-audio.ts", import.meta.url), "utf8");
 const rxAudioSource = await readFile(new URL("../../../apps/web/src/rx-environment.ts", import.meta.url), "utf8");
 const callsignSource = await readFile(new URL("../../../apps/web/src/callsign-source.ts", import.meta.url), "utf8");
+const bandmapViewSource = await readFile(new URL("../../../apps/web/src/bandmap-view.ts", import.meta.url), "utf8");
 
 function functionLine(source, name) {
   return source.split("\n").find((line) => line.includes(`function ${name}`)) ?? "";
@@ -43,4 +44,19 @@ test("base de indicativos usa BASE_URL e uma única promise em memória", () => 
   assert.match(callsignSource, /databasePromise \?\?= fetch\(databaseUrl\)/);
   assert.match(callsignSource, /new CallsignSelector\(callsigns, generatePlausibleCallsign\)/);
   assert.doesNotMatch(callsignSource, /console\.(?:debug|log|warn|error)/);
+});
+
+test("troca RUN/S&P preserva o fluxo RUN e não cria outro motor de áudio", () => {
+  assert.match(trainingSource, /type OperatingMode/);
+  assert.match(trainingSource, /switchOperatingMode\("RUN"\)/);
+  assert.match(trainingSource, /switchOperatingMode\("S_AND_P"\)/);
+  assert.match(functionLine(trainingSource, "startSession"), /operatingMode === "S_AND_P"/);
+  assert.match(functionLine(trainingSource, "startSession"), /callCq\(\)/);
+  assert.equal((trainingSource.match(/new CwAudioEngine/g) ?? []).length, 1);
+});
+
+test("Bandmap usa indicativos HTML clicáveis e protege o indicativo principal do QRM", () => {
+  assert.match(bandmapViewSource, /document\.createElement\("button"\)/);
+  assert.match(trainingSource, /setQrmCallsigns\(callsignDatabase, \[station\.callsign\]\)/);
+  assert.match(trainingSource, /selectCallsigns\(BANDMAP_40M\.stationCount, \[preferences\.operatorCall\]\)/);
 });

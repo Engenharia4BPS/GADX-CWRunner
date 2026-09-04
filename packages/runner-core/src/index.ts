@@ -1,8 +1,10 @@
 export type RunnerMode = "practice" | "verified";
 
 export * from "./audio.js";
+export * from "./bandmap.js";
 export * from "./callsigns.js";
 export * from "./rx-environment.js";
+export * from "./sandp-session.js";
 
 /** Estados do fluxo local de um QSO de contest. */
 export const QSO_TRAINING_STATES = {

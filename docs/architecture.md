@@ -39,3 +39,15 @@ Não existe garantia absoluta contra alguém que ouve o áudio e usa um decodifi
 ## Hospedagem
 
 A interface gerada pelo Vite é estática e pode viver em `araucariadx.com/cw/`. O modo verificado requer um serviço separado com WebSocket seguro (ou WebRTC em etapa posterior), banco de dados e observabilidade; não deve depender do PHP do ranking existente.
+
+## Search & Pounce local
+
+A primeira etapa do modo S&P mantém a separação existente:
+
+- `BandmapEngine` gera e mantém spots determinísticos sem DOM, rede ou relógio real;
+- `VirtualVfo` limita e atualiza a frequência sintonizada;
+- `SandPSessionController` coordena seleção, repetição e agendamento por portas injetadas;
+- `BandmapView`, em `apps/web`, renderiza a escala e os indicativos HTML;
+- o controlador web reutiliza o mesmo `AudioContext`, `CwAudioEngine`, ambiente RX e carregador de indicativos do modo RUN.
+
+O Bandmap local pode revelar os indicativos porque pertence exclusivamente ao treino não verificado. Essa representação não deve ser reutilizada no futuro modo verificado.

@@ -5,6 +5,7 @@ export interface SceneOptions {
   wpm: number;
   toneHz: number;
   volume: number;
+  signalGain?: number;
   advanced: AdvancedAudioSettings;
 }
 
@@ -87,7 +88,8 @@ export class CwAudioEngine {
     const scene = createAudioScene(texts, options.wpm, options.toneHz, options.advanced);
     const start = this.context.currentTime + 0.03;
     let end = start;
-    for (const station of scene.stations) end = Math.max(end, this.scheduleStation(station, scene, start));
+    const signalGain = Math.min(1, Math.max(0.12, options.signalGain ?? 1));
+    for (const station of scene.stations) end = Math.max(end, this.scheduleStation({ ...station, gain: station.gain * signalGain }, scene, start));
     return Math.max(0, (end - this.context.currentTime) * 1000);
   }
 

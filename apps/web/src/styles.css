@@ -33,7 +33,7 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .conditions-toggle { position: fixed; z-index: 49; top: 50%; right: 0; width: 46px; min-height: 58px; border: 1px solid #e0a91b; border-right: 0; border-radius: 9px 0 0 9px; background: linear-gradient(180deg, #00583b, #003c29); color: #fff; box-shadow: 0 5px 18px #00241752; font-size: 1.45rem; transition: opacity .18s, transform .18s; }
 .conditions-toggle:hover { transform: translateX(-3px); }
 .conditions-toggle[aria-expanded="true"] { pointer-events: none; opacity: 0; }
-.conditions-panel { position: fixed; z-index: 50; top: 96px; right: 0; display: block; width: min(385px, calc(100vw - 18px)); max-height: calc(100vh - 108px); overflow-y: auto; border-radius: 8px 0 0 8px; box-shadow: -12px 16px 45px #001b1266; opacity: 0; visibility: hidden; transform: translateX(calc(100% + 14px)); transition: transform .24s ease, opacity .2s ease, visibility 0s linear .24s; }
+.conditions-panel { position: fixed; z-index: 50; top: 96px; left: 0; display: block; width: min(385px, calc(100vw - 18px)); max-height: calc(100vh - 108px); overflow-y: auto; border-radius: 0 8px 8px 0; box-shadow: 12px 16px 45px #001b1266; opacity: 0; visibility: hidden; transform: translateX(calc(-100% - 14px)); transition: transform .24s ease, opacity .2s ease, visibility 0s linear .24s; }
 .conditions-panel.open { opacity: 1; visibility: visible; transform: translateX(0); transition-delay: 0s; }
 .conditions-panel > h2 { position: sticky; z-index: 2; top: 0; display: flex; grid-column: auto; align-items: center; justify-content: space-between; }
 .conditions-panel > h2 button { width: 32px; height: 32px; border: 1px solid #ffffff70; border-radius: 5px; background: #ffffff12; color: #fff; font-size: 1.35rem; line-height: 1; }
@@ -66,9 +66,10 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .app-layout { grid-template-columns: 278px minmax(560px, 1fr) 240px; }
 .performance-panel { min-width: 0; align-self: start; }
 .performance-panel .score-card { margin: 0; background: #fdfdfd; }
-.performance-panel .score-card div { grid-template-columns: 42px 1fr auto; gap: 7px; min-height: 82px; padding: 8px 12px; }
-.performance-panel .score-card span { font-size: 2rem; }
-.performance-panel .score-card strong { font-size: 1.7rem; }
+.performance-panel .score-card .metric { display: grid; grid-template-columns: 38px minmax(0, 1fr); grid-template-rows: 16px 24px; column-gap: 8px; align-items: center; min-height: 48px; padding: 5px 12px; }
+.performance-panel .score-card .metric > span:first-child { grid-row: 1 / -1; font-size: 1.7rem; }
+.performance-panel .score-card .metric-label { align-self: end; color: #101f19; font-size: .68rem; font-weight: 900; letter-spacing: .03em; }
+.performance-panel .score-card strong { grid-column: 2; align-self: start; font-size: 1.35rem; line-height: 1; }
 .performance-panel .score-card small { font-size: .72rem; }
 @media (max-width: 1250px) {
   .app-layout { grid-template-columns: 220px minmax(520px, 1fr); }
@@ -84,3 +85,70 @@ button:disabled { cursor: not-allowed; opacity: .58; }
   .performance-panel .score-card div { border-left: 0; border-top: 1px solid #e1e3e2; }
   .performance-panel .score-card div:first-child { border-top: 0; }
 }
+
+/* Search & Pounce: Bandmap e VFO virtual. */
+.mode-button { border-radius: 6px; padding: 6px 10px; transition: background .18s, box-shadow .18s; }
+.mode-button.active { background: #e3f2e9; box-shadow: inset 0 0 0 2px #00613d; color: #00462e; }
+.bandmap-panel[hidden], .left-rail[hidden] { display: none !important; }
+.bandmap-panel { min-width: 0; margin-top: 8px; overflow: hidden; border: 1px solid #aeb8b3; border-radius: 8px; background: #071711; color: #ddf6e9; box-shadow: inset 0 0 24px #0008; }
+.bandmap-panel > header { padding: 11px 10px 10px; border-bottom: 1px solid #2e6651; background: linear-gradient(180deg, #06432f, #022b1e); text-align: center; }
+.bandmap-panel > header strong { display: block; color: #f2be27; font-size: .76rem; letter-spacing: .055em; }
+.bandmap-panel > header > output { display: block; margin: 5px 0 7px; color: #fff; font: 800 1.35rem/1 "Consolas", "Courier New", monospace; }
+.bandmap-panel > header div { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.bandmap-panel > header span { border: 1px solid #46705f; border-radius: 3px; padding: 3px 5px; background: #08291e; color: #b8d4c8; font-size: .55rem; font-weight: 800; }
+.bandmap-plot { position: relative; height: 680px; overflow: hidden; background: repeating-linear-gradient(to bottom, transparent 0 16px, #ffffff08 16px 17px), linear-gradient(90deg, #05110d, #0b2118); }
+.bandmap-scale { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bandmap-scale text { fill: #829b90; font: 8px "Consolas", monospace; }
+.bandmap-scale line { stroke: #4f6f62; stroke-width: 1; }
+.bandmap-scale .major-tick { stroke: #92ad9f; }
+.bandmap-scale .spot-connector { stroke-width: 1.2; }
+.bandmap-scale .spot-connector.available { stroke: #3da7ff; }
+.bandmap-scale .spot-connector.selected { stroke: #f0b51f; stroke-width: 2; }
+.bandmap-scale .spot-connector.worked { stroke: #6f7874; }
+.bandmap-scale .vfo-arrow { fill: #28a9ff; filter: drop-shadow(0 0 3px #28a9ff); }
+.bandmap-spot { position: absolute; z-index: 1; left: 74px; width: calc(100% - 82px); height: 23px; overflow: hidden; border: 1px solid transparent; border-radius: 3px; padding: 1px 5px; background: #062219d9; color: #51b8ff; font: 800 .72rem/1 "Consolas", "Courier New", monospace; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.bandmap-spot:hover, .bandmap-spot:focus-visible { background: #10382a; }
+.bandmap-spot.selected { border-color: #e8aa13; background: #59420c; color: #ffd659; box-shadow: 0 0 8px #e8aa1366; }
+.bandmap-spot.worked { background: #1c2521; color: #818b86; text-decoration: line-through; }
+.performance-panel.idle { opacity: .25; pointer-events: none; filter: saturate(.45); }
+.session-metrics .score-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 10px; border: 1px solid #dfe1e0; background: #fdfdfd; }
+.session-metrics .score-card .metric { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: 15px 24px; column-gap: 7px; align-items: center; min-height: 52px; padding: 6px 12px; border: 0; border-left: 1px solid #e1e3e2; }
+.session-metrics .score-card .metric:first-child { border-left: 0; }
+.session-metrics .score-card .metric > span:first-child { grid-row: 1 / -1; color: #00603b; font-size: 1.55rem; }
+.session-metrics .score-card .metric-label { align-self: end; color: #101f19; font-size: .66rem; font-weight: 900; letter-spacing: .03em; }
+.session-metrics .score-card strong { grid-column: 2; align-self: start; color: #00452d; font-size: 1.3rem; line-height: 1; }
+.session-metrics .score-card small { font-size: .7rem; color: #111; }
+.session-metrics .score-card .trophy { color: #e7a516 !important; }
+@media (max-width: 1250px) {
+  .bandmap-panel { grid-column: 1; }
+  .app-layout.sandp-mode .work-area { grid-column: 2; }
+  .app-layout.sandp-mode .performance-panel { grid-column: 1 / -1; }
+}
+@media (max-width: 850px) {
+  .bandmap-panel { grid-column: auto; }
+  .app-layout.sandp-mode .work-area, .app-layout.sandp-mode .performance-panel { grid-column: auto; }
+  .session-metrics .score-card { grid-template-columns: 1fr; }
+  .session-metrics .score-card .metric, .session-metrics .score-card .metric:first-child { border-left: 0; border-top: 1px solid #e1e3e2; }
+  .session-metrics .score-card .metric:first-child { border-top: 0; }
+}
+
+/* Entry Window compacta, inspirada em consoles de contest sem reproduzir sua identidade visual. */
+.entry-window { border-radius: 6px; background: #fbfcfb; }
+.entry-fields { gap: 12px; padding: 12px 18px 10px; }
+.entry-fields label { color: #111a16; font-size: .72rem; letter-spacing: .055em; }
+.entry-fields input { min-height: 52px; margin-top: 5px; border-color: #bcc5c0; border-radius: 5px; padding: 6px 9px; font-family: "Consolas", "Courier New", monospace; font-size: 1rem; font-weight: 800; }
+.entry-fields .callsign-field input { min-height: 58px; border-width: 2px; font-size: 1.55rem; letter-spacing: .06em; }
+.operation-row { min-height: 60px; gap: 14px; padding: 9px 22px; }
+.mode-button { gap: 8px; min-height: 36px; border: 1px solid transparent; border-radius: 4px; padding: 5px 10px; font-size: .84rem; }
+.mode-button i { width: 23px; height: 23px; border-width: 2px; box-shadow: inset 0 0 0 2px #37ee91; }
+.mode-button + .mode-button i { box-shadow: inset 0 0 0 2px #ff5959; }
+.mode-button.active { box-shadow: inset 0 0 0 1px #00613d; }
+.divider { height: 28px; }
+.speed-control { gap: 7px; font-size: .9rem; }
+.speed-control input { width: 35px; font-family: "Consolas", "Courier New", monospace; }
+.macro-grid { gap: 8px; padding: 10px 16px; }
+.macro-grid button, .action-row button { min-height: 39px; border-color: #bfc5c2; border-radius: 4px; font-size: .78rem; letter-spacing: .01em; }
+.action-row { gap: 8px; padding: 9px 16px 10px; }
+.entry-window footer { padding: 0 16px 10px; font-size: .74rem; }
+.session-stats span { padding: 7px 6px; font-size: .66rem; }
+.session-stats strong { font-size: .95rem; }

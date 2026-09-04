@@ -45,6 +45,8 @@ export class RxEnvironment {
     if (!this.active || !this.settings || this.settings.qrmLevel <= 0) return;
     if (this.qrmTimer) window.clearTimeout(this.qrmTimer);
     this.qrmTimer = undefined;
+    for (const source of this.qrmSources) this.stopSource(source);
+    this.qrmSources.clear();
     this.scheduleNextQrm();
   }
 
