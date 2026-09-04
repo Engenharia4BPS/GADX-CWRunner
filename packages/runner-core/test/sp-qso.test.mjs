@@ -61,7 +61,7 @@ test("primeira chamada ignorada retorna ao CQ e a segunda recebe intercambio", (
   assert.equal(effect(result, "play-station").message, "exchange");
 });
 
-for (const [incident, request, response] of [["request-agn", "station-requesting-again", "operator-repeat"], ["request-call", "station-requesting-call", "operator-call"], ["request-number", "station-requesting-number", "operator-exchange"]]) {
+for (const [incident, request, response] of [["request-agn", "station-requesting-again", "operator-repeat"], ["request-call", "station-requesting-call", "operator-call"]]) {
   test(`pedido ${incident} e resposta contextual concluem o fluxo`, () => {
     let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario: base([incident]), serial: "001" });
     result = step(result.state, { type: "operator-call" });
@@ -73,13 +73,28 @@ for (const [incident, request, response] of [["request-agn", "station-requesting
   });
 }
 
-test("operador pode pedir AGN, NR e CALL sem vazar gabarito no status", () => {
-  let result = normalToReceiving();
-  for (const event of ["operator-agn", "operator-number-request", "operator-call-request"]) {
-    result = step(result.state, { type: event });
-    assert.ok(effect(result, "play-station"));
+test("F8, F9 e F10 transmitem primeiro a macro do operador", () => {
+  for (const [event, text, message] of [["operator-agn", "AGN", "exchange"], ["operator-number-request", "NR?", "number"], ["operator-call-request", "CALL?", "call"]]) {
+    let result = step(normalToReceiving().state, { type: event });
+    assert.equal(effect(result, "play-operator")?.text, text);
+    result = step(result.state, { type: "operator-finished" });
+    assert.equal(effect(result, "play-station")?.message, message);
     assert.doesNotMatch(effect(result, "status")?.label ?? "", /123/);
+    result = step(result.state, { type: "station-finished", message });
+    assert.equal(result.state.phase, "receiving-exchange");
   }
+});
+
+test("request-number ocorre somente depois do intercambio do operador", () => {
+  let result = normalToReceiving(base(["request-number"]));
+  assert.equal(result.state.phase, "receiving-exchange");
+  result = step(result.state, { type: "operator-send-exchange" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(result.state.phase, "station-requesting-number");
+  assert.equal(effect(result, "play-station")?.text, "NR?");
+  result = step(result.state, { type: "operator-send-exchange" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.message, "tu");
 });
 
 test("intercambio anotado incorretamente nao bloqueia a transmissao", () => {

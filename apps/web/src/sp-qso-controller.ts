@@ -33,6 +33,7 @@ export class SpQsoController {
   }
 
   macro(key: "F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", entry = { call: "", rst: "", exchange: "" }): void {
+    this.entry = { ...entry };
     const events: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", SpQsoEvent> = {
       F2: { type: "operator-send-exchange" },
       F3: { type: "operator-tu" },
@@ -95,7 +96,7 @@ export class SpQsoController {
       return;
     }
     const duration = this.ports.playStation(effect.text);
-    this.defer(() => this.dispatch({ type: "station-finished", message: effect.message as SpStationMessage }), duration + 80);
+    this.defer(() => this.dispatch({ type: "station-finished", message: effect.message as SpStationMessage }), duration + 80 + (effect.delayMs ?? 0));
   }
 
   private defer(action: () => void, delayMs: number): void {
