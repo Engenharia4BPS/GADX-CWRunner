@@ -3,6 +3,7 @@ export type RunnerMode = "practice" | "verified";
 export * from "./audio.js";
 export * from "./bandmap.js";
 export * from "./callsigns.js";
+export * from "./callsign-copy.js";
 export * from "./rx-environment.js";
 export * from "./sandp-session.js";
 export * from "./sp-qso.js";
