@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { checkSpQso, compareCallsign, INITIAL_SP_QSO_STATE, createSpQsoScenario, reduceSpQso } from "../src/sp-qso.ts";
+import { resolveCallCopy } from "../src/callsign-copy.ts";
 
 const base = (incidents = []) => ({ stationCall: "K1ABC", operatorCall: "PY5XT", exchange: "123", incidents });
 const effect = (transition, type) => transition.effects.find((item) => item.type === type);
@@ -123,11 +124,17 @@ test("cenario e deterministico quando a fonte aleatoria e injetada", () => {
   assert.equal(scenario.incidents.length, 2);
 });
 
-test("politica morse decide a conversa sem mascarar a conferencia final", () => {
+test("cópia parcial é percebida internamente, sem transmitir uma chamada errada", () => {
   const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
   scenario.callCopyPolicy = { model: "morse", skill: 3, acceptAlmost: false, rejectExact: false };
+  scenario.incidents = ["partial-operator-call"];
   let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario, serial: "001" });
-  result = step(result.state, { type: "operator-call", text: "PY5?T" });
+  result = step(result.state, { type: "operator-call", text: "PY5XT" });
+  assert.equal(effect(result, "play-operator")?.text, "PY5XT");
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(result.state.heardOperatorCall, "PY5?T");
+  assert.equal(effect(result, "play-station")?.text, "CALL?");
+  result = step(result.state, { type: "operator-call", text: "PY5ZZ" });
   result = step(result.state, { type: "operator-finished" });
   assert.equal(effect(result, "play-station")?.text, "CALL?");
   result = step(result.state, { type: "operator-call", text: "PY5XT" });
@@ -153,6 +160,14 @@ test("acceptAlmost prossegue no radio, mas check final continua CALL", () => {
   result = step(result.state, { type: "operator-call", text: "PY5?T" });
   result = step(result.state, { type: "operator-finished" });
   assert.equal(effect(result, "play-station")?.message, "exchange");
+});
+
+test("legacy preserva cópias plausíveis e morse entende ? como trecho variável", () => {
+  const legacy = { model: "legacy", skill: 2, acceptAlmost: false, rejectExact: false };
+  const morse = { model: "morse", skill: 2, acceptAlmost: false, rejectExact: false };
+  assert.equal(resolveCallCopy("PY5XT", "PY5X", legacy).kind, "almost");
+  assert.equal(resolveCallCopy("PY5XT", "PY5?T", morse).kind, "almost");
+  assert.equal(resolveCallCopy("PY5XT", "W1AW", legacy).kind, "wrong");
 });
 
 test("abortar QSO incompleto nao registra e limpa a entrada", () => {

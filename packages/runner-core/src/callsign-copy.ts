@@ -18,5 +18,10 @@ export function analyzeCallCopy(expected: string, copied: string): CallCopyResul
 export function resolveCallCopy(expected: string, copied: string, policy: CallCopyPolicy): CallCopyResult {
   const result = analyzeCallCopy(expected, copied);
   if (policy.model === "morse") return result;
-  return result.kind === "exact" ? result : { ...result, kind: "wrong", reason: "legacy-sem-copia-parcial" };
+  // O comparador anterior ao modelo Morse aceitava uma cópia contida ou um
+  // único erro simples. Preserve isso para cenários persistidos em "legacy".
+  if (result.kind === "exact") return result;
+  const known = result.normalizedCopied.replaceAll("?", "");
+  const plausible = known.length >= 2 && (result.normalizedExpected.includes(known) || known.includes(result.normalizedExpected) || result.distance <= 1);
+  return plausible ? { ...result, kind: "almost", reason: "legacy-alinhamento-plausivel" } : { ...result, kind: "wrong", reason: "legacy-sem-alinhamento" };
 }

@@ -1,4 +1,4 @@
-import { checkSpQso, INITIAL_SP_QSO_STATE, reduceSpQso, type QsoCheck, type SpQsoEffect, type SpQsoEvent, type SpQsoScenario, type SpQsoState, type SpStationMessage } from "@gadx/runner-core";
+import { checkSpQso, INITIAL_SP_QSO_STATE, reduceSpQso, type QsoCheck, type SpQsoEffect, type SpQsoEvent, type SpQsoScenario, type SpQsoState, type SpStationMessage } from "../../../packages/runner-core/src/sp-qso.ts";
 
 export interface SpQsoControllerPorts {
   playOperator(text: string): number;
