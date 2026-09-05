@@ -1,4 +1,4 @@
-import { BANDMAP_40M, type BandmapEngine, type BandmapStation, type VirtualVfo } from "@gadx/runner-core";
+import { BANDMAP_40M, type BandmapEngine, type BandmapStation, type DxStationActivity, type VirtualVfo } from "@gadx/runner-core";
 
 export interface BandmapViewActions {
   select(stationId: string, fillCallsign: boolean): void;
@@ -15,6 +15,7 @@ export class BandmapView {
     private readonly engine: BandmapEngine,
     private readonly vfo: VirtualVfo,
     private readonly actions: BandmapViewActions,
+    private readonly activityFor?: (stationId: string) => DxStationActivity | undefined,
   ) {}
 
   render(now = Date.now()): void {
@@ -64,11 +65,13 @@ export class BandmapView {
 
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `bandmap-spot ${station.status}`;
+      const activity = this.activityFor?.(station.id);
+      button.className = `bandmap-spot ${station.status}${activity ? ` ${activity}` : ""}`;
       button.style.top = `${labelY}px`;
-      button.textContent = station.callsign;
+      button.textContent = activity === "qsy" ? `${station.callsign} QSY` : station.callsign;
       button.title = this.tooltip(station, now);
       button.setAttribute("aria-label", this.tooltip(station, now));
+      button.disabled = activity === "worked" || activity === "qsy";
       button.addEventListener("click", () => this.actions.select(station.id, true));
       plot.append(button);
     });

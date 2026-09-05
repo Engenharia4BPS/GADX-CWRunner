@@ -17,7 +17,7 @@ function fakePorts() {
       playOperator: (text) => { operator.push(text); return 100; },
       playStation: (text, wpm) => { station.push(`${text}@${wpm}`); return 100; },
       stopCw: () => {}, schedule: (action, delayMs) => { const id = nextTimer++; timers.set(id, { action, delayMs }); return id; },
-      cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: (result) => { registered.push(result); }, recordError: () => {}, markWorked: () => {}, restartCq: () => {},
+      cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: (result) => { registered.push(result); }, recordError: () => {}, markWorked: () => {}, updateSpotStatus: () => {}, restartCq: () => {},
     },
     runDelay: (delayMs) => { const item = [...timers.entries()].find(([, timer]) => timer.delayMs === delayMs); assert.ok(item, `timer de ${delayMs} ms`); timers.delete(item[0]); item[1].action(); },
     hasDelay: (delayMs) => [...timers.values()].some((timer) => timer.delayMs === delayMs),

@@ -7,6 +7,7 @@ export * from "./callsign-copy.js";
 export * from "./cw-contest-parser.js";
 export * from "./rx-environment.js";
 export * from "./sandp-session.js";
+export * from "./sandp-world.js";
 export * from "./sp-qso.js";
 
 /** Estados do fluxo local de um QSO de contest. */

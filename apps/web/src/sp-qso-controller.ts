@@ -11,6 +11,7 @@ export interface SpQsoControllerPorts {
   registerQso(result: QsoCheck): void;
   recordError(): void;
   markWorked(): void;
+  updateSpotStatus(status: "BUSY" | "WORKED" | "FAILED" | "QSY"): void;
   restartCq(): void;
 }
 
@@ -90,7 +91,7 @@ export class SpQsoController {
     if (effect.type === "record-error") { this.ports.recordError(); return; }
     if (effect.type === "mark-worked") { this.ports.markWorked(); return; }
     if (effect.type === "restart-cq") { this.ports.restartCq(); return; }
-    if (effect.type === "update-spot-status") return;
+    if (effect.type === "update-spot-status") { this.ports.updateSpotStatus(effect.status); return; }
     if (effect.type === "cancel-reply-timeout") { this.cancelReplyTimeout(); return; }
     if (effect.type === "start-reply-timeout") { this.cancelReplyTimeout(); const generation = this.generation; let timer = 0; timer = this.ports.schedule(() => { this.timers.delete(timer); if (this.replyTimeout === timer) this.replyTimeout = undefined; if (generation === this.generation) this.dispatch({ type: "reply-timeout" }); }, effect.delayMs); this.replyTimeout = timer; this.timers.add(timer); return; }
     if (effect.type === "play-operator") {
