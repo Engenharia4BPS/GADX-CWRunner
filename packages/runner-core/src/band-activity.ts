@@ -11,7 +11,7 @@ export function planBandActivity(world: SandpWorld, vfoFrequencyKhz: number, _no
   const station = eligible[Math.min(eligible.length - 1, Math.floor(random() * eligible.length))]!;
   const offsetKhz = station.sourceFrequencyKhz - vfoFrequencyKhz;
   const text = station.activity === "calling-cq" ? `CQ TEST ${station.callsign} ${station.callsign}` : random() < .5 ? `TU ${station.callsign}` : `QSL TU ${station.callsign}`;
-  return { stationId: station.id, text, sourceFrequencyKhz: station.sourceFrequencyKhz, offsetKhz, gainMultiplier: Number((filterGain(Math.abs(offsetKhz)) * station.rfProfile.signalGain).toFixed(3)) };
+  return { stationId: station.id, text, sourceFrequencyKhz: station.sourceFrequencyKhz, offsetKhz, gainMultiplier: filterGain(Math.abs(offsetKhz)) };
 }
 
 export function activityStation(world: SandpWorld, emission: BandActivityEmission): SandpWorldStation | undefined { return world.stations.find((station) => station.id === emission.stationId); }

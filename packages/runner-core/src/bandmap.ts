@@ -91,12 +91,19 @@ export class BandmapEngine {
     if (unique.length < count) throw new Error(`São necessários ${count} indicativos únicos para gerar o Bandmap.`);
     const margin = Math.max(spacing, 0.4);
     const usable = upperKhz - lowerKhz - (margin * 2);
-    const slotSize = usable / count;
-    if (slotSize * 0.3 < spacing) throw new Error("A faixa não comporta as estações com o espaçamento solicitado.");
+    const groups = count === 1 ? 1 : Math.ceil(count / 2);
+    const groupWidth = usable / groups;
+    const frequencies = unique.slice(0, count).map((_, index) => {
+      if (count === 1) return lowerKhz + margin + ((.15 + (this.random() * .7)) * usable);
+      const group = Math.floor(index / 2);
+      const center = lowerKhz + margin + ((group + .5) * groupWidth);
+      if (index % 2 === 0 && index + 1 < count) return center - ((.35 + (this.random() * .35)) / 2);
+      if (index % 2 === 1) return center + ((.35 + (this.random() * .35)) / 2);
+      return center;
+    });
 
     this.stationList = unique.slice(0, count).map((callsign, index): BandmapStation => {
-      const slotPosition = index + 0.15 + (this.random() * 0.7);
-      const frequencyKhz = Math.round((lowerKhz + margin + (slotPosition * slotSize)) * 100) / 100;
+      const frequencyKhz = Math.round(frequencies[index]! * 100) / 100;
       return {
         id: `spot-${index + 1}-${callsign}`,
         callsign,

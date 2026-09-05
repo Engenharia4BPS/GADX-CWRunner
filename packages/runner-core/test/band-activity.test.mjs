@@ -15,8 +15,8 @@ test("filtro VFO aplica ganho próximo, vazamento e silêncio fora", () => {
   const near = planBandActivity(world([station("near", "working-other", 7025.25)]), 7025, 0, () => .1);
   const leak = planBandActivity(world([station("leak", "working-other", 7025.75)]), 7025, 0, () => .1);
   const out = planBandActivity(world([station("out", "calling-cq", 7025.76)]), 7025, 0, () => .1);
-  assert.equal(near?.gainMultiplier, .6);
-  assert.equal(leak?.gainMultiplier, .096);
+  assert.equal(near?.gainMultiplier, 1);
+  assert.equal(leak?.gainMultiplier, .16);
   assert.equal(out, undefined);
   assert.match(near?.text ?? "", /^(TU|QSL TU) NEAR$/);
 });

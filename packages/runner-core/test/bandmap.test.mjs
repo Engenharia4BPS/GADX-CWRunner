@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { BANDMAP_40M, BandmapEngine, createSeededRandom, VirtualVfo } from "../src/bandmap.ts";
+import { planBandActivity } from "../src/band-activity.ts";
+import { startSandpWorld } from "../src/sandp-world.ts";
 
 const callsigns = Array.from({ length: 20 }, (_, index) => `PY${index % 10}T${String(index).padStart(2, "0")}`);
 const options = { baseWpm: 30, baseToneHz: 600, spottedAt: 1_800_000_000_000 };
@@ -46,4 +48,24 @@ test("navegação ignora worked quando há estação disponível", () => {
   engine.select(stations[0].id);
   engine.markWorked(stations[1].id);
   assert.equal(engine.adjacent(1)?.id, stations[2].id);
+});
+
+test("Bandmap real cria pares próximos sem perder espalhamento ou espaçamento", () => {
+  const stations = new BandmapEngine(createSeededRandom(2026)).generate(callsigns, options);
+  const paired = stations.filter((station, index) => stations.some((other, otherIndex) => index !== otherIndex && Math.abs(other.frequencyKhz - station.frequencyKhz) >= .35 && Math.abs(other.frequencyKhz - station.frequencyKhz) <= .7));
+  assert.ok(paired.length >= 14);
+  for (let index = 1; index < stations.length; index += 1) assert.ok(stations[index].frequencyKhz - stations[index - 1].frequencyKhz >= BANDMAP_40M.minimumSpacingKhz);
+  assert.ok(stations.at(-1).frequencyKhz - stations[0].frequencyKhz > 30);
+});
+
+test("atividade encontra vizinha no Bandmap realmente gerado sem aplicar RF duas vezes", () => {
+  const stations = new BandmapEngine(createSeededRandom(2027)).generate(callsigns, options);
+  const world = startSandpWorld(stations, "PY5XT", 0, createSeededRandom(99));
+  const active = world.stations[0];
+  const ready = { ...world, activeStationId: active.id, stations: world.stations.map((station) => ({ ...station, activity: "calling-cq" })) };
+  const emission = planBandActivity(ready, active.sourceFrequencyKhz, 0, () => 0);
+  assert.ok(emission);
+  assert.notEqual(emission.stationId, active.id);
+  assert.ok(emission.gainMultiplier > 0);
+  assert.ok(emission.gainMultiplier === 1 || emission.gainMultiplier === .16);
 });
