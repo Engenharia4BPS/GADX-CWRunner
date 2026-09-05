@@ -106,3 +106,14 @@ test("Bandmap falha claramente quando o espaÃ§amento nÃ£o cabe na faixa", ()
     (error) => error instanceof RangeError && /cannot fit/i.test(error.message),
   );
 });
+
+test("Bandmap uniforme usa a folga real quando o espaçamento cabe por pouco", () => {
+  const tightOptions = { ...options, stationCount: 3, minimumSpacingKhz: 19.9 };
+  const first = new BandmapEngine(createSeededRandom(2031)).generate(callsigns, tightOptions);
+  const second = new BandmapEngine(createSeededRandom(2031)).generate(callsigns, tightOptions);
+  assert.deepEqual(first, second);
+  assert.equal(first.length, 3);
+  assert.ok(first.every(({ frequencyKhz }) => frequencyKhz >= BANDMAP_40M.lowerKhz && frequencyKhz <= BANDMAP_40M.upperKhz));
+  assert.ok(first[1].frequencyKhz - first[0].frequencyKhz >= 19.9);
+  assert.ok(first[2].frequencyKhz - first[1].frequencyKhz >= 19.9);
+});

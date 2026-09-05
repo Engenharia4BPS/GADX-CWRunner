@@ -126,15 +126,21 @@ export class BandmapEngine {
         frequencies.push(center - (separation / 2), center + (separation / 2));
       }
     } else {
-      const step = usable / (count - 1);
-      if (step < spacing) {
-        throw new RangeError(`Bandmap range of ${bandWidth.toFixed(2)} kHz cannot fit ${count} spots with ${spacing} kHz minimum spacing.`);
-      }
-      for (let index = 0; index < count; index += 1) frequencies.push(lowerKhz + margin + (index * step));
+      const remainingWidth = bandWidth - requiredWidth;
+      const uniformMargin = Math.min(0.4, Math.max(0, remainingWidth / 2));
+      const uniformUsable = bandWidth - (uniformMargin * 2);
+      const precisionNudge = Math.min(
+        Number.EPSILON * Math.max(1, Math.abs(upperKhz)),
+        uniformMargin / (2 * (count - 1)),
+      );
+      const step = (uniformUsable / (count - 1)) + precisionNudge;
+      for (let index = 0; index < count; index += 1) frequencies.push(lowerKhz + uniformMargin + (index * step));
     }
 
     this.stationList = unique.slice(0, count).map((callsign, index): BandmapStation => {
-      const frequencyKhz = Math.round(frequencies[index]! * 100) / 100;
+      const frequencyKhz = useClusters || count === 1
+        ? Math.round(frequencies[index]! * 100) / 100
+        : frequencies[index]!;
       return {
         id: `spot-${index + 1}-${callsign}`,
         callsign,
