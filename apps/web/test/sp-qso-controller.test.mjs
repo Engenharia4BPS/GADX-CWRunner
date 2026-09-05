@@ -8,14 +8,16 @@ function fakePorts() {
   const timers = new Map();
   const operator = [];
   const station = [];
+  const registered = [];
   return {
     operator,
     station,
+    registered,
     ports: {
       playOperator: (text) => { operator.push(text); return 100; },
       playStation: (text, wpm) => { station.push(`${text}@${wpm}`); return 100; },
       stopCw: () => {}, schedule: (action, delayMs) => { const id = nextTimer++; timers.set(id, { action, delayMs }); return id; },
-      cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: () => {}, recordError: () => {}, markWorked: () => {}, restartCq: () => {},
+      cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: (result) => { registered.push(result); }, recordError: () => {}, markWorked: () => {}, restartCq: () => {},
     },
     runDelay: (delayMs) => { const item = [...timers.entries()].find(([, timer]) => timer.delayMs === delayMs); assert.ok(item, `timer de ${delayMs} ms`); timers.delete(item[0]); item[1].action(); },
     hasDelay: (delayMs) => [...timers.values()].some((timer) => timer.delayMs === delayMs),
@@ -85,15 +87,49 @@ test("F6 sem texto e inofensivo; texto livre sempre vai para CW", () => {
   assert.deepEqual(fake.station, []);
 });
 
-test("Enter e submit enviam texto pela rota semantica", () => {
+function controllerReceivingExchange() {
   const fake = fakePorts();
   const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.responseDelayMs = 250;
+  scenario.profile = { style: "precise", replyTimeoutMs: 3000, acknowledgement: "tu", repeatsExchangeOnTimeout: false };
+  scenario.callCopyPolicy = { model: "morse", skill: 3, acceptAlmost: false, rejectExact: false };
   const controller = new SpQsoController(fake.ports);
   controller.begin(scenario, "001");
-  controller.enter("", "", "");
-  assert.deepEqual(fake.operator, ["PY5XT"]);
-  const other = new SpQsoController(fake.ports);
-  other.begin(scenario, "001");
-  other.submit("K1ABC", "599", "001");
-  assert.equal(fake.operator.at(-1), "K1ABC 599 001");
+  controller.macro("F4");
+  fake.runDelay(180);
+  fake.runDelay(250);
+  fake.runDelay(180);
+  assert.equal(controller.currentState.phase, "receiving-exchange");
+  return { controller, fake };
+}
+
+test("Enter transmite o exchange proprio e conserva a copia da estacao", () => {
+  const { controller, fake } = controllerReceivingExchange();
+  controller.enter("K1ABC", "599", "123");
+  assert.equal(fake.operator.at(-1), "5NN 001");
+  assert.notEqual(fake.operator.at(-1), "K1ABC 599 123");
+  fake.runDelay(180);
+  fake.runDelay(180);
+  assert.deepEqual(fake.registered, ["OK"]);
+});
+
+test("submit transmite o exchange proprio, enquanto F2 e pedidos guiados permanecem corretos", () => {
+  const { controller, fake } = controllerReceivingExchange();
+  controller.submit("K1ABC", "599", "123");
+  assert.equal(fake.operator.at(-1), "5NN 001");
+  assert.notEqual(fake.operator.at(-1), "K1ABC 599 123");
+
+  const f2 = fakePorts();
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  const f2Controller = new SpQsoController(f2.ports);
+  f2Controller.begin(scenario, "001");
+  f2Controller.macro("F2");
+  assert.equal(f2.operator.at(-1), "5NN 001");
+
+  const partial = controllerReceivingExchange();
+  partial.controller.enter("K1?", "599", "123");
+  assert.equal(partial.fake.operator.at(-1), "CALL?");
+  const missingNumber = controllerReceivingExchange();
+  missingNumber.controller.enter("K1ABC", "599", "");
+  assert.equal(missingNumber.fake.operator.at(-1), "NR?");
 });

@@ -49,8 +49,7 @@ export class SpQsoController {
   }
 
   submit(call: string, rst: string, exchange: string): void {
-    this.entry = { call, rst, exchange };
-    this.transmitText([call, rst || "599", exchange].filter(Boolean).join(" "));
+    this.enter(call, rst, exchange);
   }
 
   enter(call: string, rst: string, exchange: string): void {
@@ -61,7 +60,7 @@ export class SpQsoController {
     else if (phase === "station-requesting-again") this.transmitText(this.state.lastOperatorText ?? "");
     else if (phase === "receiving-exchange" && (!call.trim() || call.includes("?"))) this.transmitText("CALL?");
     else if (phase === "receiving-exchange" && !exchange.trim()) this.transmitText("NR?");
-    else if (phase === "receiving-exchange") this.transmitText([call, rst || "599", exchange].filter(Boolean).join(" "));
+    else if (phase === "receiving-exchange") this.transmitText(`5NN ${this.state.serial}`);
   }
 
   clear(): void {
