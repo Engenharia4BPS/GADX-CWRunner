@@ -68,7 +68,8 @@ export class BandmapView {
       const activity = this.activityFor?.(station.id);
       button.className = `bandmap-spot ${station.status}${activity ? ` ${activity}` : ""}`;
       button.style.top = `${labelY}px`;
-      button.textContent = activity === "qsy" ? `${station.callsign} QSY` : station.callsign;
+      const status = activity === "working-other" ? "QSO" : activity === "cooldown" ? "PAUSA" : activity === "worked" ? "WORKED" : activity === "qsy" ? "QSY" : "CQ";
+      button.textContent = `${station.callsign} ${status}`;
       button.title = this.tooltip(station, now);
       button.setAttribute("aria-label", this.tooltip(station, now));
       button.disabled = activity === "worked" || activity === "qsy";

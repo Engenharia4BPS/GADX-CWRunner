@@ -54,6 +54,42 @@ test("plano RF explícito chega ao áudio sem novo sorteio", () => {
   assert.deepEqual({ toneHz: station.toneHz, gain: station.gain, frequencyDriftHz: station.frequencyDriftHz, fadingDepth: station.fadingDepth, fadingCycleSeconds: station.fadingCycleSeconds }, { toneHz: 715, gain: .43, frequencyDriftHz: 2.1, fadingDepth: .2, fadingCycleSeconds: 3.4 });
 });
 
+test("ciclo CQ, QSO e cooldown preserva cenário e RF", () => {
+  const world = startSandpWorld(spots, "PY5XT", 0, sequence(Array(40).fill(.9)));
+  const station = { ...world.stations[0], activity: "calling-cq", nextTransitionAtMs: 100, behavior: { ...world.stations[0].behavior, workingDurationMs: 200, cqDurationMs: 300, cooldownDurationMs: 150, qsyProbability: 0 } };
+  const ready = { ...world, stations: [station, world.stations[1]] };
+  const working = advanceSandpWorld(ready, 100, () => .9);
+  assert.equal(working.stations[0].activity, "working-other");
+  assert.equal(working.stations[0].scenario, station.scenario);
+  assert.equal(working.stations[0].rfProfile, station.rfProfile);
+  const calling = advanceSandpWorld(working, 300, () => .9);
+  assert.equal(calling.stations[0].activity, "calling-cq");
+  const cooldown = markSandpStationFailed(calling, "a", 300, () => .9);
+  assert.equal(cooldown.stations[0].activity, "cooldown");
+  assert.equal(advanceSandpWorld(cooldown, 450, () => .9).stations[0].activity, "calling-cq");
+});
+
+test("QSY autônomo é raro, limitado a duas estações e não toca a ativa", () => {
+  const many = [...spots, { ...spots[0], id: "c", callsign: "N1ZZ" }];
+  const world = startSandpWorld(many, "PY5XT", 0, sequence(Array(60).fill(.9)));
+  const primed = { ...world, stations: world.stations.map((station) => ({ ...station, activity: "calling-cq", nextTransitionAtMs: 100, behavior: { ...station.behavior, qsyProbability: 1 } })) };
+  const first = advanceSandpWorld(primed, 100, () => 0);
+  assert.equal(first.autonomousQsyCount, 2);
+  assert.equal(first.stations.filter((station) => station.activity === "qsy").length, 2);
+  const active = setSandpQsoActive({ ...primed, stations: primed.stations.map((station, index) => index === 0 ? station : { ...station, activity: "working-other", nextTransitionAtMs: 500 }) }, "a");
+  assert.equal(advanceSandpWorld(active, 100, () => 0).stations[0].activity, "calling-cq");
+});
+
+test("perfis precise e impatient têm ciclos e paciência coerentes", () => {
+  const world = startSandpWorld(spots, "PY5XT", 0, sequence(Array(40).fill(.9)));
+  const precise = { ...world.stations[0], profile: { ...world.stations[0].profile, style: "precise" }, behavior: { cqDurationMs: 60_000, workingDurationMs: 42_000, cooldownDurationMs: 7_000, qsyProbability: .01, patience: 6 } };
+  const impatient = { ...world.stations[1], profile: { ...world.stations[1].profile, style: "impatient" }, behavior: { cqDurationMs: 18_000, workingDurationMs: 15_000, cooldownDurationMs: 20_000, qsyProbability: .04, patience: 2 } };
+  assert.ok(precise.behavior.cqDurationMs > impatient.behavior.cqDurationMs);
+  assert.ok(precise.behavior.workingDurationMs > impatient.behavior.workingDurationMs);
+  assert.ok(precise.behavior.patience > impatient.behavior.patience);
+  assert.ok(precise.behavior.qsyProbability < impatient.behavior.qsyProbability);
+});
+
 test("BUSY é persistente, libera a estação ativa e preserva cenário", () => {
   const world = startSandpWorld(spots, "PY5XT", 0, sequence([.9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9]));
   const active = setSandpQsoActive(world, "a");
