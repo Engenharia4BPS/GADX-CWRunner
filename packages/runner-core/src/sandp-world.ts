@@ -54,5 +54,11 @@ export function advanceSandpWorld(world: SandpWorld, nowMs: number, random: () =
   return changed ? copy(world, stations) : world;
 }
 export function markSandpStationWorked(world: SandpWorld, stationId: string, _nowMs: number): SandpWorld { return copy(world, world.stations.map((station) => station.id === stationId ? { ...station, activity: "worked" as const, nextTransitionAtMs: undefined } : station), { activeStationId: undefined }); }
+/** A estação ocupada continua no mundo, mas não pode iniciar outro QSO até o prazo expirar. */
+export function markSandpStationBusy(world: SandpWorld, stationId: string, nowMs: number, random: () => number): SandpWorld {
+  const station = sandpWorldStation(world, stationId);
+  if (!station || station.activity === "worked" || station.activity === "qsy") return world;
+  return copy(world, world.stations.map((candidate) => candidate.id === stationId ? { ...candidate, activity: "working-other" as const, nextTransitionAtMs: nowMs + busyFor(random) } : candidate), { activeStationId: world.activeStationId === stationId ? undefined : world.activeStationId });
+}
 export function markSandpStationFailed(world: SandpWorld, stationId: string, nowMs: number, random: () => number): SandpWorld { return copy(world, world.stations.map((station) => station.id === stationId && station.activity !== "worked" && station.activity !== "qsy" ? { ...station, activity: "cooldown" as const, nextTransitionAtMs: nowMs + cooldownFor(random) } : station), { activeStationId: undefined }); }
 export function markSandpStationQsy(world: SandpWorld, stationId: string): SandpWorld { return copy(world, world.stations.map((station) => station.id === stationId ? { ...station, activity: "qsy" as const, nextTransitionAtMs: undefined } : station), { activeStationId: undefined }); }
