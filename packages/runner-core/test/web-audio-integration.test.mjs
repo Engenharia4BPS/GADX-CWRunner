@@ -74,7 +74,7 @@ test("F2 preserva a entrada atual e pedidos S&P passam pelo CW do operador", () 
   assert.match(spControllerSource, /this\.entry = \{ \.\.\.entry \}/);
   assert.match(spControllerSource, /const playStation = \(\): void/);
   assert.match(spControllerSource, /this\.defer\(playStation, effect\.delayMs\)/);
-  assert.match(spControllerSource, /const duration = this\.ports\.playStation\(effect\.text\)/);
+  assert.match(spControllerSource, /const duration = this\.ports\.playStation\(effect\.text, this\.state\.scenario\?\.wpm \?\? 30\)/);
   assert.doesNotMatch(spControllerSource, /duration \+ 80 \+ \(effect\.delayMs/);
   assert.match(trainingSource, /spQsoController\.macro\(key, \{ call: callsign\.value/);
 });

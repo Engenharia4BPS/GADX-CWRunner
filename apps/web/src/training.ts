@@ -70,7 +70,7 @@ const sandpController = new SandPSessionController(bandmapEngine, virtualVfo, {
 bandmapView = new BandmapView(element<HTMLElement>("#bandmap-panel"), bandmapEngine, virtualVfo, { select: (stationId, fillCallsign) => selectBandmapStation(stationId, fillCallsign) });
 const spQsoController = new SpQsoController({
   playOperator: (text) => { sandpController.pauseCq(); return transmit(text); },
-  playStation: (text) => { const station = sandpController.currentStation; return station ? playSandPText(station, text) : 0; },
+  playStation: (text, wpm) => { const station = sandpController.currentStation; return station ? playSandPText({ ...station, wpm }, text) : 0; },
   stopCw: () => audioEngine?.stop(),
   schedule: (action, delayMs) => window.setTimeout(action, delayMs),
   cancelSchedule: (handle) => window.clearTimeout(handle),

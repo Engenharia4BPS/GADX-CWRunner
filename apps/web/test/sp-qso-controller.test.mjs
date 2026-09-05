@@ -13,7 +13,7 @@ function fakePorts() {
     station,
     ports: {
       playOperator: (text) => { operator.push(text); return 100; },
-      playStation: (text) => { station.push(text); return 100; },
+      playStation: (text, wpm) => { station.push(`${text}@${wpm}`); return 100; },
       stopCw: () => {}, schedule: (action, delayMs) => { const id = nextTimer++; timers.set(id, { action, delayMs }); return id; },
       cancelSchedule: (id) => { timers.delete(id); }, status: () => {}, clearEntry: () => {}, registerQso: () => {}, recordError: () => {}, markWorked: () => {}, restartCq: () => {},
     },
@@ -27,6 +27,10 @@ test("F4 transmite a chamada real e atrasa CALL? de cópia parcial", () => {
   const controller = new SpQsoController(fake.ports);
   const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
   scenario.incidents = ["partial-operator-call"];
+  scenario.profile = { style: "precise", replyTimeoutMs: 8000, acknowledgement: "tu", repeatsExchangeOnTimeout: false };
+  scenario.callCopyPolicy = { model: "morse", skill: 3, acceptAlmost: false, rejectExact: false };
+  scenario.wpm = 30;
+  scenario.responseDelayMs = 250;
   scenario.responseDelayMs = 250;
   controller.begin(scenario, "001");
   controller.macro("F4");
@@ -36,7 +40,7 @@ test("F4 transmite a chamada real e atrasa CALL? de cópia parcial", () => {
   assert.equal(controller.currentState.heardOperatorCall, "PY5?T");
   assert.deepEqual(fake.station, []);
   fake.runDelay(250);
-  assert.deepEqual(fake.station, ["CALL?"]);
+  assert.deepEqual(fake.station, ["CALL?@30"]);
 });
 
 test("abortar antes da resposta atrasada impede o CW da estação", () => {
@@ -56,6 +60,7 @@ test("timeout começa após o exchange e F2 o cancela", () => {
   const controller = new SpQsoController(fake.ports);
   const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
   scenario.profile = { style: "precise", replyTimeoutMs: 3000, acknowledgement: "tu", repeatsExchangeOnTimeout: false };
+  scenario.responseDelayMs = 250;
   controller.begin(scenario, "001");
   controller.macro("F4");
   fake.runDelay(180);

@@ -2,7 +2,7 @@ import { checkSpQso, INITIAL_SP_QSO_STATE, reduceSpQso, type QsoCheck, type SpQs
 
 export interface SpQsoControllerPorts {
   playOperator(text: string): number;
-  playStation(text: string): number;
+  playStation(text: string, wpm: number): number;
   stopCw(): void;
   schedule(action: () => void, delayMs: number): number;
   cancelSchedule(handle: number): void;
@@ -35,6 +35,7 @@ export class SpQsoController {
 
   macro(key: "F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", entry = { call: "", rst: "", exchange: "" }): void {
     this.entry = { ...entry };
+    if (key === "F2" || key === "F4" || key === "F6" || key === "F8" || key === "F9" || key === "F10") this.cancelReplyTimeout();
     const events: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", SpQsoEvent> = {
       F2: { type: "operator-send-exchange" },
       F3: { type: "operator-tu" },
@@ -99,7 +100,7 @@ export class SpQsoController {
       return;
     }
     const playStation = (): void => {
-      const duration = this.ports.playStation(effect.text);
+      const duration = this.ports.playStation(effect.text, this.state.scenario?.wpm ?? 30);
       this.defer(() => this.dispatch({ type: "station-finished", message: effect.message as SpStationMessage }), duration + 80);
     };
     if (effect.delayMs && effect.delayMs > 0) this.defer(playStation, effect.delayMs);
