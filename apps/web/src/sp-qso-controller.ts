@@ -35,17 +35,17 @@ export class SpQsoController {
 
   macro(key: "F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", entry = { call: "", rst: "", exchange: "" }): void {
     this.entry = { ...entry };
-    if (key === "F2" || key === "F4" || key === "F6" || key === "F8" || key === "F9" || key === "F10") this.cancelReplyTimeout();
-    const events: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", SpQsoEvent> = {
-      F2: { type: "operator-transmitted", text: `5NN ${this.state.serial}`, intent: { kind: "send-exchange" } },
-      F3: { type: "operator-transmitted", text: "TU" },
-      F4: { type: "operator-transmitted", text: this.state.scenario?.operatorCall ?? "", intent: { kind: "call-station" } },
-      F6: { type: "operator-transmitted", text: this.state.lastOperatorText ?? "", intent: { kind: "request-again" } },
-      F8: { type: "operator-transmitted", text: "AGN?", intent: { kind: "request-again" } },
-      F9: { type: "operator-transmitted", text: "NR?", intent: { kind: "request-number" } },
-      F10: { type: "operator-transmitted", text: "CALL?", intent: { kind: "request-call" } },
+    const texts: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", string> = {
+      F2: `5NN ${this.state.serial}`, F3: "TU", F4: this.state.scenario?.operatorCall ?? "", F6: this.state.lastOperatorText ?? "", F8: "AGN?", F9: "NR?", F10: "CALL?",
     };
-    this.dispatch(events[key]);
+    this.transmitText(texts[key]);
+  }
+
+  transmitText(text: string): void {
+    const normalized = text.trim().toUpperCase().replace(/\s+/g, " ");
+    if (!normalized) return;
+    this.cancelReplyTimeout();
+    this.dispatch({ type: "operator-transmitted", text: normalized });
   }
 
   submit(call: string, rst: string, exchange: string): void {

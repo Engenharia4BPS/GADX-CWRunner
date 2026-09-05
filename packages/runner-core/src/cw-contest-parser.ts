@@ -1,4 +1,4 @@
-export interface ContestTransmissionContext { operatorCall: string; stationCall: string; operatorSerial: string; stationExchange?: string; }
+export interface ContestTransmissionContext { operatorCall: string; stationCall: string; operatorSerial: string; stationExchange?: string; phase?: "calling" | "exchange" | "closing"; }
 export type OperatorIntent =
   | { kind: "call-station"; copiedCall?: string }
   | { kind: "send-exchange"; call?: string; rst?: string; serial?: string }
@@ -21,8 +21,9 @@ export function parseContestTransmission(text: string, context: ContestTransmiss
   const number = tokens.filter((_, index) => index !== rstIndex).map(serial).find((value) => value !== undefined);
   const stationCall = context.stationCall.toUpperCase(); const operatorCall = context.operatorCall.toUpperCase();
   const call = calls.find((value) => value === stationCall || value !== operatorCall);
-  if (rstIndex >= 0 && number && calls.length) return calls.length > 1 ? { kind: "send-call-and-exchange", call, rst: "599", serial: number } : { kind: "send-exchange", call, rst: "599", serial: number };
+  if (rstIndex >= 0 && number && (calls.length || context.phase === "exchange")) return calls.length > 1 ? { kind: "send-call-and-exchange", call, rst: "599", serial: number } : { kind: "send-exchange", call, rst: "599", serial: number };
   if (calls.includes(stationCall) && (calls.includes(operatorCall) || calls.length >= 1)) return { kind: "call-station", copiedCall: operatorCall };
+  if (context.phase === "calling" && calls.length === 1 && calls[0] === operatorCall) return { kind: "call-station", copiedCall: operatorCall };
   if (calls.length === 1 && calls[0]!.includes("?")) return { kind: "call-station", copiedCall: calls[0] };
   return { kind: "unknown" };
 }
