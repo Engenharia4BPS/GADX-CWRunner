@@ -37,13 +37,13 @@ export class SpQsoController {
     this.entry = { ...entry };
     if (key === "F2" || key === "F4" || key === "F6" || key === "F8" || key === "F9" || key === "F10") this.cancelReplyTimeout();
     const events: Record<"F2" | "F3" | "F4" | "F6" | "F8" | "F9" | "F10", SpQsoEvent> = {
-      F2: { type: "operator-send-exchange" },
-      F3: { type: "operator-tu" },
-      F4: { type: "operator-call", text: this.state.scenario?.operatorCall ?? "" },
-      F6: { type: "operator-repeat" },
-      F8: { type: "operator-agn" },
-      F9: { type: "operator-number-request" },
-      F10: { type: "operator-call-request" },
+      F2: { type: "operator-transmitted", text: `5NN ${this.state.serial}`, intent: { kind: "send-exchange" } },
+      F3: { type: "operator-transmitted", text: "TU" },
+      F4: { type: "operator-transmitted", text: this.state.scenario?.operatorCall ?? "", intent: { kind: "call-station" } },
+      F6: { type: "operator-transmitted", text: this.state.lastOperatorText ?? "", intent: { kind: "request-again" } },
+      F8: { type: "operator-transmitted", text: "AGN?", intent: { kind: "request-again" } },
+      F9: { type: "operator-transmitted", text: "NR?", intent: { kind: "request-number" } },
+      F10: { type: "operator-transmitted", text: "CALL?", intent: { kind: "request-call" } },
     };
     this.dispatch(events[key]);
   }
