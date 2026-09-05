@@ -16,6 +16,7 @@ export class CwAudioEngine {
   private readonly cwBus: GainNode;
   private readonly environment: RxEnvironment;
   private readonly sources = new Set<AudioScheduledSourceNode>();
+  private readonly bandSources = new Set<AudioScheduledSourceNode>();
 
   constructor(private readonly context: AudioContext, random: () => number = Math.random) {
     this.master = context.createGain();
@@ -43,8 +44,19 @@ export class CwAudioEngine {
     this.sources.clear();
   }
 
+  stopBandActivity(): void {
+    for (const source of this.bandSources) {
+      try { source.stop(); } catch { /* A fonte já terminou. */ }
+    }
+    this.bandSources.clear();
+  }
+
+  get foregroundActive(): boolean { return this.sources.size > 0; }
+  get bandActivityActive(): boolean { return this.bandSources.size > 0; }
+
   stopAll(): void {
     this.stop();
+    this.stopBandActivity();
     this.environment.stop(true);
   }
 
@@ -85,16 +97,28 @@ export class CwAudioEngine {
 
   play(texts: readonly string[], options: SceneOptions): number {
     this.stop();
+    this.stopBandActivity();
     this.setVolume(options.volume);
     const scene = createAudioScene(texts, options.wpm, options.toneHz, options.advanced, undefined, options.rfProfile);
     const start = this.context.currentTime + 0.03;
     let end = start;
     const signalGain = Math.min(1, Math.max(0.12, options.signalGain ?? 1));
-    for (const station of scene.stations) end = Math.max(end, this.scheduleStation({ ...station, gain: station.gain * signalGain }, scene, start));
+    for (const station of scene.stations) end = Math.max(end, this.scheduleStation({ ...station, gain: station.gain * signalGain }, scene, start, this.sources));
     return Math.max(0, (end - this.context.currentTime) * 1000);
   }
 
-  private scheduleStation(station: StationSignalPlan, scene: AudioScenePlan, sceneStart: number): number {
+  playBandActivity(text: string, options: SceneOptions): number {
+    if (this.foregroundActive || this.bandActivityActive) return 0;
+    const scene = createAudioScene([text], options.wpm, options.toneHz, options.advanced, undefined, options.rfProfile);
+    const start = this.context.currentTime + .03;
+    const signalGain = Math.min(.55, Math.max(.05, options.signalGain ?? 1));
+    const station = scene.stations[0];
+    if (!station) return 0;
+    const end = this.scheduleStation({ ...station, gain: station.gain * signalGain }, scene, start, this.bandSources);
+    return Math.max(0, (end - this.context.currentTime) * 1000);
+  }
+
+  private scheduleStation(station: StationSignalPlan, scene: AudioScenePlan, sceneStart: number, sources: Set<AudioScheduledSourceNode>): number {
     const bus = this.context.createGain();
     const baseGain = station.gain * scene.mixHeadroom;
     const start = sceneStart + station.startDelaySeconds;
@@ -115,7 +139,7 @@ export class CwAudioEngine {
         envelope.gain.setValueAtTime(1, cursor + duration - edge);
         envelope.gain.linearRampToValueAtTime(0, cursor + duration);
         oscillator.connect(envelope).connect(bus);
-        this.track(oscillator);
+        this.track(oscillator, sources);
         oscillator.start(cursor);
         oscillator.stop(cursor + duration);
       }
@@ -133,9 +157,9 @@ export class CwAudioEngine {
     return cursor;
   }
 
-  private track<T extends AudioScheduledSourceNode>(source: T): T {
-    this.sources.add(source);
-    source.addEventListener("ended", () => this.sources.delete(source), { once: true });
+  private track<T extends AudioScheduledSourceNode>(source: T, sources = this.sources): T {
+    sources.add(source);
+    source.addEventListener("ended", () => sources.delete(source), { once: true });
     return source;
   }
 }

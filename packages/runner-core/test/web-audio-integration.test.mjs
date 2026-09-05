@@ -24,6 +24,15 @@ test("cada transmissão para somente o CW transitório", () => {
   assert.doesNotMatch(playMethod, /stopAll|stopEnvironment/);
 });
 
+test("atividade de faixa é separada do primeiro plano e cancelada por ele", () => {
+  assert.match(cwAudioSource, /private readonly bandSources/);
+  assert.match(cwAudioSource, /playBandActivity\(text/);
+  assert.match(cwAudioSource, /this\.stopBandActivity\(\)/);
+  assert.match(trainingSource, /preferences\.bandActivity/);
+  assert.match(trainingSource, /scheduleBandActivity/);
+  assert.match(trainingSource, /planBandActivity/);
+});
+
 test("Esc encerra CW, ambiente e timers; nova sessão restaura uma vez", () => {
   assert.match(trainingSource, /Escape: \(\) => endSession\(\)/);
   assert.match(functionLine(trainingSource, "stopTransmission"), /audioEngine\?\.stopAll\(\)/);

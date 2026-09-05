@@ -8,6 +8,7 @@ export type DxStationActivity = "calling-cq" | "working-other" | "cooldown" | "w
 export interface SandpWorldStation {
   id: string;
   callsign: string;
+  sourceFrequencyKhz: number;
   profile: SpStationProfile;
   skill: 1 | 2 | 3;
   wpm: number;
@@ -54,7 +55,7 @@ export function startSandpWorld(spots: readonly BandmapStation[], operatorCall: 
       });
       const behavior = createBehaviorProfile(scenario.profile, scenario.patience, random);
       const working = random() < 0.2;
-      return { id: spot.id, callsign: spot.callsign, profile: scenario.profile, skill: scenario.skill, wpm: scenario.wpm, patience: scenario.patience, responseDelayMs: scenario.responseDelayMs, toneOffsetHz: scenario.toneOffsetHz, signalLevel: scenario.signalLevel, rfProfile: createRfProfile(spot, random), behavior, activity: working ? "working-other" : "calling-cq", nextTransitionAtMs: nowMs + (working ? behavior.workingDurationMs : behavior.cqDurationMs), scenario };
+      return { id: spot.id, callsign: spot.callsign, sourceFrequencyKhz: spot.frequencyKhz, profile: scenario.profile, skill: scenario.skill, wpm: scenario.wpm, patience: scenario.patience, responseDelayMs: scenario.responseDelayMs, toneOffsetHz: scenario.toneOffsetHz, signalLevel: scenario.signalLevel, rfProfile: createRfProfile(spot, random), behavior, activity: working ? "working-other" : "calling-cq", nextTransitionAtMs: nowMs + (working ? behavior.workingDurationMs : behavior.cqDurationMs), scenario };
     }),
   };
 }

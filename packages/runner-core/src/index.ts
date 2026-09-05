@@ -1,6 +1,7 @@
 export type RunnerMode = "practice" | "verified";
 
 export * from "./audio.js";
+export * from "./band-activity.js";
 export * from "./bandmap.js";
 export * from "./callsigns.js";
 export * from "./callsign-copy.js";
