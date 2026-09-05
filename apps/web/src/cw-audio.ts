@@ -1,4 +1,4 @@
-import { createAudioScene, ditDurationSeconds, encodeMorse, type AdvancedAudioSettings, type AudioScenePlan, type RxEnvironmentSettings, type StationSignalPlan } from "@gadx/runner-core";
+import { createAudioScene, ditDurationSeconds, encodeMorse, type AdvancedAudioSettings, type AudioScenePlan, type ExplicitStationRfPlan, type RxEnvironmentSettings, type StationSignalPlan } from "@gadx/runner-core";
 import { RxEnvironment } from "./rx-environment";
 
 export interface SceneOptions {
@@ -6,6 +6,7 @@ export interface SceneOptions {
   toneHz: number;
   volume: number;
   signalGain?: number;
+  rfProfile?: ExplicitStationRfPlan;
   advanced: AdvancedAudioSettings;
 }
 
@@ -85,7 +86,7 @@ export class CwAudioEngine {
   play(texts: readonly string[], options: SceneOptions): number {
     this.stop();
     this.setVolume(options.volume);
-    const scene = createAudioScene(texts, options.wpm, options.toneHz, options.advanced);
+    const scene = createAudioScene(texts, options.wpm, options.toneHz, options.advanced, undefined, options.rfProfile);
     const start = this.context.currentTime + 0.03;
     let end = start;
     const signalGain = Math.min(1, Math.max(0.12, options.signalGain ?? 1));
@@ -124,9 +125,9 @@ export class CwAudioEngine {
       let fadingCursor = start;
       let low = false;
       while (fadingCursor < cursor) {
-        bus.gain.linearRampToValueAtTime(baseGain * (low ? 1 : 1 - station.fadingDepth), Math.min(cursor, fadingCursor + 0.65));
+        bus.gain.linearRampToValueAtTime(baseGain * (low ? 1 : 1 - station.fadingDepth), Math.min(cursor, fadingCursor + station.fadingCycleSeconds));
         low = !low;
-        fadingCursor += 0.65;
+        fadingCursor += station.fadingCycleSeconds;
       }
     }
     return cursor;

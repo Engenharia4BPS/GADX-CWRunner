@@ -1,6 +1,8 @@
 import type { BandmapStation } from "./bandmap.js";
 import { createSpQsoScenario, type SpQsoScenario, type SpStationProfile } from "./sp-qso.js";
 
+export interface DxRfProfile { toneHz: number; signalGain: number; frequencyDriftHz: number; fadingDepth: number; fadingCycleSeconds: number; }
+
 export type DxStationActivity = "calling-cq" | "working-other" | "cooldown" | "worked" | "qsy";
 export interface SandpWorldStation {
   id: string;
@@ -12,6 +14,7 @@ export interface SandpWorldStation {
   responseDelayMs: number;
   toneOffsetHz: number;
   signalLevel: number;
+  rfProfile: DxRfProfile;
   activity: DxStationActivity;
   nextTransitionAtMs?: number;
   scenario: SpQsoScenario;
@@ -21,6 +24,17 @@ export interface SandpWorld { stations: readonly SandpWorldStation[]; selectedSt
 const busyFor = (random: () => number): number => 18_000 + Math.round(random() * 22_000);
 const cooldownFor = (random: () => number): number => 7_000 + Math.round(random() * 10_000);
 const copy = (world: SandpWorld, stations: readonly SandpWorldStation[], changes: Partial<SandpWorld> = {}): SandpWorld => ({ ...world, ...changes, stations });
+const clamp = (value: number, low: number, high: number): number => Math.min(high, Math.max(low, value));
+const createRfProfile = (spot: BandmapStation, random: () => number): DxRfProfile => {
+  const strength = clamp((spot.signalDb + 18) / 15, 0, 1);
+  return {
+    toneHz: Math.round(clamp(spot.toneHz + ((random() * 16) - 8), 300, 1000)),
+    signalGain: Number(clamp(.32 + (strength * .52) + ((random() * .1) - .05), .28, .9).toFixed(3)),
+    frequencyDriftHz: Number((.8 + (random() * 2.4)).toFixed(2)),
+    fadingDepth: Number((.08 + ((1 - strength) * .16) + (random() * .08)).toFixed(3)),
+    fadingCycleSeconds: Number((1.5 + (random() * 2.5)).toFixed(2)),
+  };
+};
 
 /** Cria identidades persistentes para os spots; toda aleatoriedade vem do chamador. */
 export function startSandpWorld(spots: readonly BandmapStation[], operatorCall: string, nowMs: number, random: () => number): SandpWorld {
@@ -30,7 +44,7 @@ export function startSandpWorld(spots: readonly BandmapStation[], operatorCall: 
         id: spot.id, wpm: spot.wpm, toneOffsetHz: spot.toneHz, signalLevel: spot.signalDb,
       });
       const working = random() < 0.2;
-      return { id: spot.id, callsign: spot.callsign, profile: scenario.profile, skill: scenario.skill, wpm: scenario.wpm, patience: scenario.patience, responseDelayMs: scenario.responseDelayMs, toneOffsetHz: scenario.toneOffsetHz, signalLevel: scenario.signalLevel, activity: working ? "working-other" : "calling-cq", ...(working ? { nextTransitionAtMs: nowMs + busyFor(random) } : {}), scenario };
+      return { id: spot.id, callsign: spot.callsign, profile: scenario.profile, skill: scenario.skill, wpm: scenario.wpm, patience: scenario.patience, responseDelayMs: scenario.responseDelayMs, toneOffsetHz: scenario.toneOffsetHz, signalLevel: scenario.signalLevel, rfProfile: createRfProfile(spot, random), activity: working ? "working-other" : "calling-cq", ...(working ? { nextTransitionAtMs: nowMs + busyFor(random) } : {}), scenario };
     }),
   };
 }

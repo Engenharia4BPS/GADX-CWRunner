@@ -20,6 +20,16 @@ export interface StationSignalPlan {
   startDelaySeconds: number;
   frequencyDriftHz: number;
   fadingDepth: number;
+  fadingCycleSeconds: number;
+}
+
+/** Assinatura RF explícita para uma estação persistente, sem sorteio durante a transmissão. */
+export interface ExplicitStationRfPlan {
+  toneHz: number;
+  signalGain: number;
+  frequencyDriftHz: number;
+  fadingDepth: number;
+  fadingCycleSeconds: number;
 }
 
 export interface AudioScenePlan {
@@ -41,21 +51,24 @@ export function createAudioScene(
   baseToneHz: number,
   settings: AdvancedAudioSettings,
   random: () => number = Math.random,
+  explicitRf?: ExplicitStationRfPlan,
 ): AudioScenePlan {
   const count = settings.enabled ? clampStationCount(Math.min(settings.stationCount, texts.length)) : 1;
   const stations = texts.slice(0, count).map((text, index): StationSignalPlan => {
     const speedOffset = settings.enabled && settings.stationSpeedVariation ? Math.round((random() * 6) - 3) : 0;
     const toneOffset = settings.enabled && settings.frequencyVariation ? (random() * 50) - 25 : 0;
     const levelVariation = settings.enabled && settings.signalVariation ? 0.68 + (random() * 0.32) : 1;
+    const rf = index === 0 ? explicitRf : undefined;
     return {
       id: index,
       text,
       wpm: Math.min(60, Math.max(10, baseWpm + speedOffset)),
-      toneHz: Math.min(1000, Math.max(300, baseToneHz + toneOffset)),
-      gain: levelVariation * (index === 0 ? 1 : 0.72),
+      toneHz: Math.min(1000, Math.max(300, rf?.toneHz ?? baseToneHz + toneOffset)),
+      gain: Math.min(1, Math.max(0.12, (rf?.signalGain ?? levelVariation) * (index === 0 ? 1 : 0.72))),
       startDelaySeconds: index === 0 ? 0 : random() * 0.14,
-      frequencyDriftHz: settings.enabled && settings.frequencyVariation ? 3 + (random() * 7) : 0,
-      fadingDepth: settings.enabled && settings.slowFading ? 0.18 + (random() * 0.32) : 0,
+      frequencyDriftHz: Math.min(12, Math.max(0, rf?.frequencyDriftHz ?? (settings.enabled && settings.frequencyVariation ? 3 + (random() * 7) : 0))),
+      fadingDepth: Math.min(0.45, Math.max(0, rf?.fadingDepth ?? (settings.enabled && settings.slowFading ? 0.18 + (random() * 0.32) : 0))),
+      fadingCycleSeconds: Math.min(5, Math.max(.4, rf?.fadingCycleSeconds ?? .65)),
     };
   });
   const load = stations.length;
