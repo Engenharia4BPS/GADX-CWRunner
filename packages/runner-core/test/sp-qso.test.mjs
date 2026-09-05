@@ -213,3 +213,32 @@ test("abortar QSO incompleto nao registra e limpa a entrada", () => {
   assert.ok(effect(result, "clear-entry"));
   assert.equal(effect(result, "register-qso"), undefined);
 });
+
+test("rota semantica repete chamada apos AGN e exchange apos NR", () => {
+  let result = step(INITIAL_SP_QSO_STATE, { type: "start", scenario: base(["request-agn"]), serial: "001" });
+  result = step(result.state, { type: "operator-transmitted", text: "PY5XT" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(result.state.phase, "station-requesting-again");
+  result = step(result.state, { type: "operator-transmitted", text: "PY5XT" });
+  assert.equal(effect(result, "play-operator")?.text, "PY5XT");
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(effect(result, "play-station")?.message, "exchange");
+
+  result = normalToReceiving(base(["request-number"]));
+  result = step(result.state, { type: "operator-transmitted", text: "5NN 001" });
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(result.state.phase, "station-requesting-number");
+  result = step(result.state, { type: "operator-transmitted", text: "5NN 001" });
+  assert.equal(effect(result, "play-operator")?.text, "5NN 001");
+});
+
+test("texto livre toca, nao avanca o QSO e restaura timeout", () => {
+  let result = normalToReceiving();
+  result = step(result.state, { type: "operator-transmitted", text: "ZZZ TESTE" });
+  assert.equal(effect(result, "play-operator")?.text, "ZZZ TESTE");
+  assert.equal(effect(result, "play-station"), undefined);
+  result = step(result.state, { type: "operator-finished" });
+  assert.equal(result.state.phase, "receiving-exchange");
+  assert.ok(effect(result, "start-reply-timeout"));
+  assert.equal(effect(result, "register-qso"), undefined);
+});

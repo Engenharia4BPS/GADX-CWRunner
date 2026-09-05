@@ -70,3 +70,30 @@ test("timeout começa após o exchange e F2 o cancela", () => {
   controller.macro("F2");
   assert.equal(fake.hasDelay(3000), false);
 });
+
+test("F6 sem texto e inofensivo; texto livre sempre vai para CW", () => {
+  const fake = fakePorts();
+  const controller = new SpQsoController(fake.ports);
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  scenario.profile = { style: "precise", replyTimeoutMs: 3000, acknowledgement: "tu", repeatsExchangeOnTimeout: false };
+  controller.begin(scenario, "001");
+  controller.macro("F6");
+  assert.deepEqual(fake.operator, []);
+  controller.transmitText("ZZZ TESTE");
+  assert.deepEqual(fake.operator, ["ZZZ TESTE"]);
+  fake.runDelay(180);
+  assert.deepEqual(fake.station, []);
+});
+
+test("Enter e submit enviam texto pela rota semantica", () => {
+  const fake = fakePorts();
+  const scenario = createSpQsoScenario("K1ABC", "PY5XT", "123", () => .9);
+  const controller = new SpQsoController(fake.ports);
+  controller.begin(scenario, "001");
+  controller.enter("", "", "");
+  assert.deepEqual(fake.operator, ["PY5XT"]);
+  const other = new SpQsoController(fake.ports);
+  other.begin(scenario, "001");
+  other.submit("K1ABC", "599", "001");
+  assert.equal(fake.operator.at(-1), "K1ABC 599 001");
+});

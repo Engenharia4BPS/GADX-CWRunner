@@ -50,18 +50,18 @@ export class SpQsoController {
 
   submit(call: string, rst: string, exchange: string): void {
     this.entry = { call, rst, exchange };
-    this.dispatch({ type: "operator-exchange", call, rst, exchange });
+    this.transmitText([call, rst || "599", exchange].filter(Boolean).join(" "));
   }
 
   enter(call: string, rst: string, exchange: string): void {
     this.entry = { call, rst, exchange };
     const phase = this.state.phase;
-    if (phase === "listening-cq" || phase === "station-requesting-call") this.dispatch({ type: "operator-call", text: this.state.scenario?.operatorCall ?? "" });
-    else if (phase === "station-requesting-number") this.dispatch({ type: "operator-send-exchange" });
-    else if (phase === "station-requesting-again") this.dispatch({ type: "operator-repeat" });
-    else if (phase === "receiving-exchange" && (!call.trim() || call.includes("?"))) this.dispatch({ type: "operator-call-request" });
-    else if (phase === "receiving-exchange" && !exchange.trim()) this.dispatch({ type: "operator-number-request" });
-    else if (phase === "receiving-exchange") this.dispatch({ type: "operator-exchange", call, rst, exchange });
+    if (phase === "listening-cq" || phase === "station-requesting-call") this.transmitText(this.state.scenario?.operatorCall ?? "");
+    else if (phase === "station-requesting-number") this.transmitText(`5NN ${this.state.serial}`);
+    else if (phase === "station-requesting-again") this.transmitText(this.state.lastOperatorText ?? "");
+    else if (phase === "receiving-exchange" && (!call.trim() || call.includes("?"))) this.transmitText("CALL?");
+    else if (phase === "receiving-exchange" && !exchange.trim()) this.transmitText("NR?");
+    else if (phase === "receiving-exchange") this.transmitText([call, rst || "599", exchange].filter(Boolean).join(" "));
   }
 
   clear(): void {
