@@ -89,18 +89,49 @@ export class BandmapEngine {
     const spacing = options.minimumSpacingKhz ?? BANDMAP_40M.minimumSpacingKhz;
     const unique = [...new Set(callsigns.map((callsign) => callsign.trim().toUpperCase()).filter(Boolean))];
     if (unique.length < count) throw new Error(`São necessários ${count} indicativos únicos para gerar o Bandmap.`);
-    const margin = Math.max(spacing, 0.4);
-    const usable = upperKhz - lowerKhz - (margin * 2);
-    const groups = count === 1 ? 1 : Math.ceil(count / 2);
-    const groupWidth = usable / groups;
-    const frequencies = unique.slice(0, count).map((_, index) => {
-      if (count === 1) return lowerKhz + margin + ((.15 + (this.random() * .7)) * usable);
-      const group = Math.floor(index / 2);
-      const center = lowerKhz + margin + ((group + .5) * groupWidth);
-      if (index % 2 === 0 && index + 1 < count) return center - ((.35 + (this.random() * .35)) / 2);
-      if (index % 2 === 1) return center + ((.35 + (this.random() * .35)) / 2);
-      return center;
-    });
+    if (!Number.isInteger(count) || count < 1) throw new RangeError("Bandmap spot count must be a positive integer.");
+    if (!Number.isFinite(lowerKhz) || !Number.isFinite(upperKhz) || lowerKhz >= upperKhz) {
+      throw new RangeError("Bandmap frequency limits must define a valid range.");
+    }
+    if (!Number.isFinite(spacing) || spacing <= 0) throw new RangeError("Bandmap minimum spacing must be greater than zero.");
+
+    const bandWidth = upperKhz - lowerKhz;
+    const requiredWidth = (count - 1) * spacing;
+    if (requiredWidth > bandWidth) {
+      throw new RangeError(`Bandmap range of ${bandWidth.toFixed(2)} kHz cannot fit ${count} spots with ${spacing} kHz minimum spacing.`);
+    }
+
+    const margin = count === 1
+      ? Math.min(Math.max(spacing, 0.4), bandWidth / 2)
+      : Math.max(0.4, Math.min(spacing, (bandWidth - requiredWidth) / 2));
+    const usable = bandWidth - (margin * 2);
+    const groups = Math.ceil(count / 2);
+    const pairMinimum = Math.ceil(Math.max(spacing, .35) * 100) / 100;
+    const groupWidth = count > 1 ? usable / groups : usable;
+    const useClusters = count > 1 && pairMinimum <= .7 && groupWidth >= spacing + .7;
+    const frequencies: number[] = [];
+
+    if (count === 1) {
+      frequencies.push(lowerKhz + margin + ((.15 + (this.random() * .7)) * usable));
+    } else if (useClusters) {
+      for (let group = 0; group < groups; group += 1) {
+        const center = lowerKhz + margin + ((group + .5) * groupWidth);
+        const firstIndex = group * 2;
+        if (firstIndex + 1 >= count) {
+          frequencies.push(center);
+          continue;
+        }
+        const rawSeparation = pairMinimum + (this.random() * (.7 - pairMinimum));
+        const separation = Math.ceil(rawSeparation * 100) / 100;
+        frequencies.push(center - (separation / 2), center + (separation / 2));
+      }
+    } else {
+      const step = usable / (count - 1);
+      if (step < spacing) {
+        throw new RangeError(`Bandmap range of ${bandWidth.toFixed(2)} kHz cannot fit ${count} spots with ${spacing} kHz minimum spacing.`);
+      }
+      for (let index = 0; index < count; index += 1) frequencies.push(lowerKhz + margin + (index * step));
+    }
 
     this.stationList = unique.slice(0, count).map((callsign, index): BandmapStation => {
       const frequencyKhz = Math.round(frequencies[index]! * 100) / 100;

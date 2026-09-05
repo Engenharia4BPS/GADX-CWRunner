@@ -69,3 +69,40 @@ test("atividade encontra vizinha no Bandmap realmente gerado sem aplicar RF duas
   assert.ok(emission.gainMultiplier > 0);
   assert.ok(emission.gainMultiplier === 1 || emission.gainMultiplier === .16);
 });
+
+test("Bandmap agrupado respeita minimumSpacingKhz de 0.60", () => {
+  const clusteredOptions = { ...options, minimumSpacingKhz: .6 };
+  const first = new BandmapEngine(createSeededRandom(2028)).generate(callsigns, clusteredOptions);
+  const second = new BandmapEngine(createSeededRandom(2028)).generate(callsigns, clusteredOptions);
+  assert.deepEqual(first, second);
+  for (let index = 1; index < first.length; index += 1) {
+    assert.ok(first[index].frequencyKhz - first[index - 1].frequencyKhz >= .6);
+  }
+  const paired = first.filter((station, index) => first.some((other, otherIndex) => (
+    index !== otherIndex
+    && Math.abs(other.frequencyKhz - station.frequencyKhz) >= .6
+    && Math.abs(other.frequencyKhz - station.frequencyKhz) <= .7
+  )));
+  assert.ok(paired.length >= 14);
+});
+
+test("Bandmap sem clusters respeita minimumSpacingKhz acima de 0.70", () => {
+  const unclusteredOptions = { ...options, minimumSpacingKhz: .71 };
+  const first = new BandmapEngine(createSeededRandom(2029)).generate(callsigns, unclusteredOptions);
+  const second = new BandmapEngine(createSeededRandom(2029)).generate(callsigns, unclusteredOptions);
+  assert.deepEqual(first, second);
+  for (let index = 1; index < first.length; index += 1) {
+    assert.ok(first[index].frequencyKhz - first[index - 1].frequencyKhz >= .71);
+  }
+  assert.ok(first.every((station, index) => first.every((other, otherIndex) => (
+    index === otherIndex || Math.abs(other.frequencyKhz - station.frequencyKhz) > .7
+  ))));
+  assert.ok(first.every(({ frequencyKhz }) => frequencyKhz >= BANDMAP_40M.lowerKhz && frequencyKhz <= BANDMAP_40M.upperKhz));
+});
+
+test("Bandmap falha claramente quando o espaÃ§amento nÃ£o cabe na faixa", () => {
+  assert.throws(
+    () => new BandmapEngine(createSeededRandom(2030)).generate(callsigns, { ...options, minimumSpacingKhz: 3 }),
+    (error) => error instanceof RangeError && /cannot fit/i.test(error.message),
+  );
+});
