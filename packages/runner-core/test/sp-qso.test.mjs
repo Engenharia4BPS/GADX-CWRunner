@@ -25,7 +25,7 @@ function normalToReceiving(scenario = base()) {
   return step(result.state, { type: "station-finished", message: "exchange" });
 }
 
-test("QSO normal registra uma vez somente apos TU", () => {
+test("QSO normal registra uma vez após a confirmação final da estação", () => {
   let result = normalToReceiving();
   assert.equal(result.state.phase, "receiving-exchange");
   result = step(result.state, { type: "operator-exchange", call: "K1ABC", rst: "599", exchange: "123" });
@@ -34,10 +34,23 @@ test("QSO normal registra uma vez somente apos TU", () => {
   assert.equal(effect(result, "play-station").message, "final");
   result = step(result.state, { type: "station-finished", message: "final" });
   assert.equal(result.state.phase, "completed");
+  assert.equal(result.state.dxOperator?.logical, "done");
   assert.ok(effect(result, "register-qso"));
   assert.ok(effect(result, "mark-worked"));
   const again = step(result.state, { type: "station-finished", message: "final" });
   assert.equal(effect(again, "register-qso"), undefined);
+});
+
+test("final fora de ordem não registra nem conclui o QSO", () => {
+  const scenario = base();
+  const started = step(INITIAL_SP_QSO_STATE, { type: "start", scenario, serial: "001" });
+  const result = step({ ...started.state, phase: "awaiting-tu", logical: "closing" }, { type: "station-finished", message: "final" });
+  assert.equal(result.state.phase, "awaiting-tu");
+  assert.notEqual(result.state.dxOperator?.logical, "done");
+  assert.equal(effect(result, "register-qso"), undefined);
+  assert.equal(effect(result, "mark-worked"), undefined);
+  assert.equal(effect(result, "clear-entry"), undefined);
+  assert.equal(result.effects.some((item) => item.type === "update-spot-status" && item.status === "WORKED"), false);
 });
 
 test("estacao ocupada retorna ao CQ sem registrar QSO", () => {
@@ -200,8 +213,8 @@ test("timeout pede número, consome paciência e falha quando ela acaba", () => 
   assert.equal(effect(result, "start-reply-timeout")?.delayMs, 8000);
   result = step(result.state, { type: "reply-timeout" });
   assert.equal(effect(result, "play-station")?.text, "NR?");
-  assert.equal(result.state.patience, 3);
-  result = step({ ...result.state, phase: "receiving-exchange", patience: 1 }, { type: "reply-timeout" });
+  assert.equal(result.state.dxOperator?.patience, 3);
+  result = step({ ...result.state, phase: "receiving-exchange", dxOperator: { ...result.state.dxOperator, patience: 1 } }, { type: "reply-timeout" });
   assert.equal(result.state.phase, "failed");
   assert.ok(effect(result, "update-spot-status"));
   assert.ok(effect(result, "restart-cq"));

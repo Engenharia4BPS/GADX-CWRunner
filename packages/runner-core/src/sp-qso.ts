@@ -1,5 +1,6 @@
 import { analyzeCallCopy, resolveCallCopy, type CallCopyKind, type CallCopyPolicy } from "./callsign-copy.js";
 import { parseContestTransmission } from "./cw-contest-parser.js";
+import { createDxOperatorState, reduceDxOperator, type DxOperatorProfile, type DxOperatorState } from "./dx-operator.js";
 
 export type CallMatch = CallCopyKind;
 export type QsoCheck = "OK" | "CALL" | "RST" | "NR" | "NIL" | "DUP";
@@ -11,12 +12,12 @@ export type SpStationMessage = "busy" | "exchange" | "agn" | "call" | "number" |
 export interface SpStationProfile { style: "precise" | "impatient" | "lid"; replyTimeoutMs: number; acknowledgement: "tu" | "r-number-tu" | "rr-tu"; repeatsExchangeOnTimeout: boolean; }
 
 export interface SpQsoScenario { id: string; stationCall: string; spottedCallsign: string; operatorCall: string; exchange: string; rst: string; wpm: number; toneOffsetHz: number; signalLevel: number; skill: 1 | 2 | 3; patience: number; responseDelayMs: number; profile: SpStationProfile; initialBehavior: "normal" | "busy" | "ignores-first-call"; operatorCallCopy: CallMatch; operatorExchangeCopy: CallMatch; callCopyPolicy: CallCopyPolicy; repeatCount: 1 | 2; incidents: readonly SpIncident[]; }
-export interface SpQsoState { phase: SpQsoPhase; logical: SpLogicalState; physical: SpPhysicalState; scenario?: SpQsoScenario; serial: string; patience: number; callAttempts: number; usedIncidents: readonly SpIncident[]; pendingOperator?: "initial-call" | "requested-call" | "requested-again" | "our-exchange" | "requested-number" | "agn-request" | "number-request" | "call-request" | "unrecognized-transmission"; returnPhase?: SpQsoPhase; returnLogical?: SpLogicalState; lastOperatorText?: string; transmittedOperatorCall?: string; heardOperatorCall?: string; copyChallengeUsed: boolean; lastStationText?: string; registered: boolean; }
+export interface SpQsoState { phase: SpQsoPhase; logical: SpLogicalState; physical: SpPhysicalState; scenario?: SpQsoScenario; serial: string; usedIncidents: readonly SpIncident[]; dxOperator?: DxOperatorState; pendingOperator?: "initial-call" | "requested-call" | "requested-again" | "our-exchange" | "requested-number" | "agn-request" | "number-request" | "call-request" | "unrecognized-transmission"; returnPhase?: SpQsoPhase; returnLogical?: SpLogicalState; lastOperatorText?: string; transmittedOperatorCall?: string; heardOperatorCall?: string; copyChallengeUsed: boolean; lastStationText?: string; registered: boolean; }
 export type SpQsoEffect = { type: "play-operator"; text: string } | { type: "play-station"; text: string; message: SpStationMessage; delayMs?: number } | { type: "start-reply-timeout"; delayMs: number } | { type: "cancel-reply-timeout" } | { type: "status"; label: string } | { type: "register-qso"; result: QsoCheck } | { type: "record-error" } | { type: "mark-worked" } | { type: "restart-cq" } | { type: "clear-entry" } | { type: "update-spot-status"; status: "BUSY" | "WORKED" | "FAILED" | "QSY" };
 /** Os eventos operator-* abaixo sao adaptadores internos do reducer. A interface usa operator-transmitted. */
 export type SpQsoEvent = { type: "start"; scenario: SpQsoScenario; serial: string } | { type: "operator-transmitted"; text: string } | { type: "operator-call"; text?: string } | { type: "operator-exchange"; call: string; rst: string; exchange: string; text?: string } | { type: "operator-send-exchange" } | { type: "operator-tu" } | { type: "operator-agn" } | { type: "operator-number-request" } | { type: "operator-call-request" } | { type: "operator-repeat" } | { type: "operator-finished" } | { type: "station-finished"; message: SpStationMessage } | { type: "reply-timeout" } | { type: "tuned-out" } | { type: "abort" };
 export interface SpQsoTransition { state: SpQsoState; effects: readonly SpQsoEffect[]; }
-export const INITIAL_SP_QSO_STATE: SpQsoState = { phase: "idle", logical: "waiting-for-tune", physical: "listening", serial: "001", patience: 0, callAttempts: 0, usedIncidents: [], copyChallengeUsed: false, registered: false };
+export const INITIAL_SP_QSO_STATE: SpQsoState = { phase: "idle", logical: "waiting-for-tune", physical: "listening", serial: "001", usedIncidents: [], copyChallengeUsed: false, registered: false };
 
 const normalize = (value: string): string => value.trim().toUpperCase().replace(/[^A-Z0-9/?]/g, "");
 export function compareCallsign(entered: string, expected: string): CallMatch { return analyzeCallCopy(expected, entered).kind; }
@@ -39,6 +40,37 @@ const partialCallCopy = (call: string): string => {
   return `${call.slice(0, -1)}?`;
 };
 
+const dxProfile = (scenario: SpQsoScenario): DxOperatorProfile => ({
+  patience: scenario.patience,
+  wpm: scenario.wpm,
+  responseDelayMs: scenario.responseDelayMs,
+  replyTimeoutMs: scenario.profile.replyTimeoutMs,
+  callCopyPolicy: scenario.callCopyPolicy ?? { model: "legacy", skill: scenario.skill, acceptAlmost: false, rejectExact: false },
+  repeatsExchangeOnTimeout: scenario.profile.repeatsExchangeOnTimeout,
+});
+const currentDxOperator = (state: SpQsoState): DxOperatorState => {
+  if (!state.dxOperator) throw new Error("S&P ativo exige um DX Operator inicializado.");
+  return state.dxOperator;
+};
+const withDxOperator = (state: SpQsoState, dxOperator: DxOperatorState): SpQsoState => ({ ...state, dxOperator });
+const acknowledgeOperatorExchange = (state: SpQsoState, scenario: SpQsoScenario): SpQsoTransition => {
+  const dx = reduceDxOperator(currentDxOperator(state), dxProfile(scenario), { type: "operator-exchange", acknowledgementText: finalAcknowledgement(state, scenario) });
+  const decided = withDxOperator(state, dx.state);
+  return dx.decision.type === "acknowledge"
+    ? station(decided, dx.decision.text, "final", "awaiting-tu", "closing")
+    : { state: decided, effects: [] };
+};
+const completeQso = (state: SpQsoState, scenario: SpQsoScenario): SpQsoTransition => {
+  if (!state.dxOperator) return { state, effects: [] };
+  const dx = reduceDxOperator(state.dxOperator, dxProfile(scenario), { type: "station-finalized" });
+  const decided = withDxOperator(state, dx.state);
+  if (dx.state.logical !== "done") return { state: decided, effects: [] };
+  return {
+    state: { ...decided, phase: "completed", logical: "completed", physical: "listening", registered: true },
+    effects: [{ type: "status", label: "QSO CONCLUÃDO" }, { type: "register-qso", result: "OK" }, { type: "mark-worked" }, { type: "update-spot-status", status: "WORKED" }, { type: "clear-entry" }],
+  };
+};
+
 const failCallCopy = (state: SpQsoState): SpQsoTransition => ({ state: { ...state, phase: "failed", logical: "failed", physical: "listening" }, effects: [{ type: "cancel-reply-timeout" }, { type: "status", label: "FAILED" }, { type: "update-spot-status", status: "FAILED" }, { type: "restart-cq" }] });
 
 /** Decide a resposta da estação a toda transmissão do indicativo do operador. */
@@ -54,24 +86,29 @@ const respondToOperatorCall = (state: SpQsoState, scenario: SpQsoScenario): SpQs
   const heardOperatorCall = partialIncident ? partialCallCopy(transmittedOperatorCall) : transmittedOperatorCall;
   const heardState = partialIncident ? consume({ ...state, transmittedOperatorCall, heardOperatorCall }, "partial-operator-call") : { ...state, transmittedOperatorCall, heardOperatorCall };
   const copy = resolveCallCopy(scenario.operatorCall, heardOperatorCall, policy);
-  const tolerateAlmost = policy.acceptAlmost || policy.skill === 1;
   if (has(heardState, "request-call")) return station(consume(heardState, "request-call"), "CALL?", "call", "station-requesting-call", "need-operator-call", true);
   if (has(heardState, "request-agn")) return station(consume(heardState, "request-agn"), "AGN?", "agn", "station-requesting-again", "need-operator-call", true);
   const forceRepeat = copy.kind === "exact" && policy.rejectExact && !heardState.copyChallengeUsed;
   if (forceRepeat) return station({ ...heardState, copyChallengeUsed: true }, "CALL?", "call", "station-requesting-call", "need-operator-call", true);
   if (copy.kind === "wrong" && has(heardState, "nil")) return station(consume(heardState, "nil"), "NIL", "nil", "station-requesting-call", "need-operator-call", true);
-  if (copy.kind === "wrong" || (copy.kind === "almost" && !tolerateAlmost)) {
-    const retry = { ...heardState, patience: heardState.patience - 1 };
-    return retry.patience > 0 ? station(retry, "CALL?", "call", "station-requesting-call", "need-operator-call", true) : failCallCopy(retry);
-  }
-  return station(heardState, stationExchange(heardState, scenario), "exchange", "awaiting-reply", "need-operator-call-and-number", true);
+  const dx = reduceDxOperator(currentDxOperator(heardState), dxProfile(scenario), {
+    type: "operator-call",
+    expectedOperatorCall: scenario.operatorCall,
+    heardOperatorCall,
+    exchangeText: stationExchange(heardState, scenario),
+  });
+  const decided = withDxOperator(heardState, dx.state);
+  if (dx.decision.type === "send-exchange") return station(decided, dx.decision.text, "exchange", "awaiting-reply", "need-operator-call-and-number", true);
+  if (dx.decision.type === "request-call") return station(decided, dx.decision.text, "call", "station-requesting-call", "need-operator-call", true);
+  if (dx.decision.type === "failed") return failCallCopy(decided);
+  return { state: decided, effects: [] };
 };
 
 export function createSpQsoScenario(stationCall: string, operatorCall: string, exchange: string, random: () => number, details: Partial<Pick<SpQsoScenario, "id" | "wpm" | "toneOffsetHz" | "signalLevel" | "skill" | "patience" | "responseDelayMs" | "profile">> = {}): SpQsoScenario { const choices: SpIncident[] = ["busy", "ignore-first-call", "request-agn", "request-call", "request-number", "repeat-exchange", "partial-operator-call", "b4", "nil", "qrl", "qsy", "wrong-number-correction"]; const roll = random(); const count = roll < .12 ? 2 : roll < .4 ? 1 : 0; const incidents: SpIncident[] = []; while (incidents.length < count) { const item = choices[Math.floor(random() * choices.length)]!; if (!incidents.includes(item)) incidents.push(item); } const profileRoll = random(); const profile = details.profile ?? (profileRoll < .55 ? { style: "precise" as const, replyTimeoutMs: 8000, acknowledgement: "tu" as const, repeatsExchangeOnTimeout: false } : profileRoll < .8 ? { style: "impatient" as const, replyTimeoutMs: 3000, acknowledgement: "rr-tu" as const, repeatsExchangeOnTimeout: false } : { style: "lid" as const, replyTimeoutMs: 5000, acknowledgement: "r-number-tu" as const, repeatsExchangeOnTimeout: true }); const defaults = profile.style === "precise" ? { skill: 3 as const, patience: 6, wpm: 34, responseDelayMs: 160 } : profile.style === "impatient" ? { skill: 3 as const, patience: 2, wpm: 30, responseDelayMs: 180 } : { skill: 1 as const, patience: 4, wpm: 24, responseDelayMs: 320 }; const skill = details.skill ?? defaults.skill; return { id: details.id ?? normalize(stationCall), stationCall: normalize(stationCall), spottedCallsign: normalize(stationCall), operatorCall: normalize(operatorCall), exchange: normalize(exchange).padStart(3, "0"), rst: "599", wpm: details.wpm ?? defaults.wpm, toneOffsetHz: details.toneOffsetHz ?? 0, signalLevel: details.signalLevel ?? 0, skill, patience: details.patience ?? defaults.patience, responseDelayMs: details.responseDelayMs ?? defaults.responseDelayMs, profile, initialBehavior: incidents.includes("busy") ? "busy" : incidents.includes("ignore-first-call") ? "ignores-first-call" : "normal", operatorCallCopy: incidents.includes("partial-operator-call") ? "almost" : "exact", operatorExchangeCopy: incidents.includes("repeat-exchange") ? "almost" : "exact", callCopyPolicy: { model: "morse", skill, acceptAlmost: profile.style === "lid", rejectExact: profile.style === "lid" }, repeatCount: 1, incidents }; }
 
 export function reduceSpQso(state: SpQsoState, event: SpQsoEvent): SpQsoTransition {
   if (event.type === "abort" || event.type === "tuned-out") return { state: { ...state, phase: "aborted", logical: "aborted", physical: "listening", pendingOperator: undefined }, effects: [{ type: "status", label: "QSO ABORTADO" }, { type: "clear-entry" }] };
-  if (event.type === "start") return { state: { phase: "listening-cq", logical: "calling-cq", physical: "listening", scenario: event.scenario, serial: event.serial, patience: event.scenario.patience, callAttempts: 0, usedIncidents: [], copyChallengeUsed: false, registered: false }, effects: [{ type: "status", label: "CQ" }, { type: "clear-entry" }] };
+  if (event.type === "start") { const dxOperator = createDxOperatorState(dxProfile(event.scenario)); return { state: { phase: "listening-cq", logical: "calling-cq", physical: "listening", scenario: event.scenario, serial: event.serial, usedIncidents: [], dxOperator, copyChallengeUsed: false, registered: false }, effects: [{ type: "status", label: "CQ" }, { type: "clear-entry" }] }; }
   const s = state.scenario; if (!s || ["idle", "completed", "failed", "aborted"].includes(state.phase)) return { state, effects: [] };
   if (event.type === "operator-transmitted") {
     const phase = state.phase === "listening-cq" || state.phase === "station-requesting-call" || state.phase === "station-requesting-again" ? "calling" : state.phase === "receiving-exchange" || state.phase === "station-requesting-number" ? "exchange" : "closing";
@@ -84,7 +121,16 @@ export function reduceSpQso(state: SpQsoState, event: SpQsoEvent): SpQsoTransiti
     if (intent.kind === "send-tu") return reduceSpQso(state, { type: "operator-tu" });
     return { state: { ...state, physical: "sending", pendingOperator: "unrecognized-transmission", returnPhase: state.phase, returnLogical: state.logical, lastOperatorText: event.text }, effects: [{ type: "cancel-reply-timeout" }, { type: "play-operator", text: event.text }, { type: "status", label: "TRANSMISSÃO LIVRE" }] };
   }
-  if (event.type === "reply-timeout") { const timedOut = { ...state, patience: state.patience - 1 }; if (timedOut.patience <= 0) return failCallCopy(timedOut); if (state.phase === "receiving-exchange" || state.phase === "station-requesting-number") return s.profile.repeatsExchangeOnTimeout ? station(timedOut, `${s.operatorCall} 5NN ${s.exchange}`, "exchange", "awaiting-reply", "need-operator-number", true) : station(timedOut, "NR?", "number", "station-requesting-number", "need-operator-number", true); if (state.phase === "station-requesting-call" || state.phase === "station-requesting-again") return station(timedOut, "CALL?", "call", "station-requesting-call", "need-operator-call", true); return { state, effects: [] }; }
+  if (event.type === "reply-timeout") {
+    if (state.phase !== "receiving-exchange" && state.phase !== "station-requesting-number" && state.phase !== "station-requesting-call" && state.phase !== "station-requesting-again") return { state, effects: [] };
+    const dx = reduceDxOperator(currentDxOperator(state), dxProfile(s), { type: "reply-timeout", exchangeText: `${s.operatorCall} 5NN ${s.exchange}` });
+    const timedOut = withDxOperator(state, dx.state);
+    if (dx.decision.type === "failed") return failCallCopy(timedOut);
+    if (dx.decision.type === "send-exchange") return station(timedOut, dx.decision.text, "exchange", "awaiting-reply", "need-operator-number", true);
+    if (dx.decision.type === "request-number") return station(timedOut, dx.decision.text, "number", "station-requesting-number", "need-operator-number", true);
+    if (dx.decision.type === "request-call") return station(timedOut, dx.decision.text, "call", "station-requesting-call", "need-operator-call", true);
+    return { state: timedOut, effects: [] };
+  }
   if (event.type === "operator-call") { if (state.phase !== "listening-cq" && state.phase !== "station-requesting-call" && state.phase !== "station-requesting-again") return { state, effects: [] }; const text = event.text || s.operatorCall; const pending = state.phase === "listening-cq" ? "initial-call" : state.phase === "station-requesting-again" ? "requested-again" : "requested-call"; const transition = op(state, text, pending, "CALLING"); return withTimeoutCancel({ ...transition, state: { ...transition.state, transmittedOperatorCall: text } }); }
   if (event.type === "operator-repeat") { const pending = state.phase === "station-requesting-again" ? "requested-again" : state.phase === "station-requesting-number" ? "requested-number" : undefined; return pending && state.lastOperatorText ? withTimeoutCancel(op(state, state.lastOperatorText, pending, "REPETINDO")) : { state, effects: [] }; }
   if (event.type === "operator-send-exchange" || event.type === "operator-exchange") { if (state.phase !== "receiving-exchange" && state.phase !== "station-requesting-number") return { state, effects: [] }; return op(state, event.type === "operator-exchange" ? event.text ?? `5NN ${state.serial}` : `5NN ${state.serial}`, state.phase === "station-requesting-number" ? "requested-number" : "our-exchange", "ENVIANDO INTERCÂMBIO", "sending-our-exchange"); }
@@ -96,16 +142,29 @@ export function reduceSpQso(state: SpQsoState, event: SpQsoEvent): SpQsoTransiti
   if (event.type === "station-finished" && event.message === "nil" && state.phase === "station-requesting-call") return { state: { ...state, physical: "listening" }, effects: [startReplyTimeout(state)] };
   if (event.type === "station-finished" && event.message === "exchange" && state.phase === "awaiting-reply") return { state: { ...state, phase: "receiving-exchange", logical: "need-operator-number", physical: "listening" }, effects: [{ type: "status", label: "RECEBENDO INTERCÂMBIO" }, startReplyTimeout(state)] };
   if (event.type === "station-finished" && ((event.message === "number" && state.phase === "station-requesting-number") || (event.message === "call" && state.phase === "station-requesting-call") || (event.message === "agn" && state.phase === "station-requesting-again"))) return { state: { ...state, physical: "listening" }, effects: [startReplyTimeout(state)] };
-  if (event.type === "station-finished" && event.message === "final" && state.phase === "awaiting-tu" && !state.registered) return { state: { ...state, phase: "completed", logical: "completed", physical: "listening", registered: true }, effects: [{ type: "status", label: "QSO CONCLUÍDO" }, { type: "register-qso", result: "OK" }, { type: "mark-worked" }, { type: "update-spot-status", status: "WORKED" }, { type: "clear-entry" }] };
+  if (event.type === "station-finished" && event.message === "final" && state.phase === "awaiting-tu" && !state.registered) return completeQso(state, s);
   if (event.type === "operator-finished" && state.pendingOperator === "unrecognized-transmission") {
     const restored = { ...state, phase: state.returnPhase ?? state.phase, logical: state.returnLogical ?? state.logical, physical: "listening" as const, pendingOperator: undefined, returnPhase: undefined, returnLogical: undefined };
     const waiting = restored.phase === "receiving-exchange" || restored.phase === "station-requesting-number" || restored.phase === "station-requesting-call" || restored.phase === "station-requesting-again";
     return { state: restored, effects: waiting ? [startReplyTimeout(restored)] : [] };
   }
-  if (event.type === "operator-finished") { const pending = state.pendingOperator; const after: SpQsoState = { ...state, physical: "copying", pendingOperator: undefined, callAttempts: state.callAttempts + (pending === "initial-call" ? 1 : 0) }; if (pending === "agn-request") return station(after, after.lastStationText ?? "", "exchange", after.returnPhase ?? "receiving-exchange", after.logical, true); if (pending === "number-request") return station(after, `5NN ${s.exchange}`, "number", after.returnPhase ?? "receiving-exchange", after.logical, true); if (pending === "call-request") return station(after, `DE ${s.stationCall} ${s.stationCall}`, "call", after.returnPhase ?? "receiving-exchange", after.logical, true); if (pending === "initial-call" || pending === "requested-call" || pending === "requested-again") return respondToOperatorCall(after, s); if (pending === "our-exchange") return has(after, "request-number") || has(after, "repeat-exchange") ? station(consume(after, has(after, "request-number") ? "request-number" : "repeat-exchange"), "NR?", "number", "station-requesting-number", "need-operator-number") : station(after, finalAcknowledgement(after, s), "final", "awaiting-tu", "closing"); if (pending === "requested-number") return station(after, finalAcknowledgement(after, s), "final", "awaiting-tu", "closing"); }
-  if (event.type === "station-finished") { if (event.message === "busy" && state.phase === "station-busy") return { state: { ...state, phase: "listening-cq", logical: "calling-cq", physical: "listening" }, effects: [{ type: "status", label: "CQ" }, { type: "restart-cq" }] }; if (event.message === "exchange" && state.phase === "awaiting-reply") return { state: { ...state, phase: "receiving-exchange", logical: "need-operator-number", physical: "listening" }, effects: [{ type: "status", label: "RECEBENDO INTERCÂMBIO" }] }; if ((event.message === "exchange" || event.message === "number" || event.message === "call") && state.phase === "receiving-exchange") return { state: { ...state, physical: "listening", returnPhase: undefined }, effects: [] }; if (event.message === "tu" && state.phase === "awaiting-tu" && !state.registered) return { state: { ...state, phase: "completed", logical: "completed", physical: "listening", registered: true }, effects: [{ type: "status", label: "QSO CONCLUÍDO" }, { type: "register-qso", result: "OK" }, { type: "mark-worked" }, { type: "update-spot-status", status: "WORKED" }, { type: "clear-entry" }] }; }
+  if (event.type === "operator-finished") {
+    const pending = state.pendingOperator;
+    const after: SpQsoState = { ...state, physical: "copying", pendingOperator: undefined };
+    if (pending === "agn-request") return station(after, after.lastStationText ?? "", "exchange", after.returnPhase ?? "receiving-exchange", after.logical, true);
+    if (pending === "number-request") return station(after, `5NN ${s.exchange}`, "number", after.returnPhase ?? "receiving-exchange", after.logical, true);
+    if (pending === "call-request") return station(after, `DE ${s.stationCall} ${s.stationCall}`, "call", after.returnPhase ?? "receiving-exchange", after.logical, true);
+    if (pending === "initial-call" || pending === "requested-call" || pending === "requested-again") return respondToOperatorCall(after, s);
+    if (pending === "our-exchange") {
+      return has(after, "request-number") || has(after, "repeat-exchange")
+        ? station(consume(after, has(after, "request-number") ? "request-number" : "repeat-exchange"), "NR?", "number", "station-requesting-number", "need-operator-number")
+        : acknowledgeOperatorExchange(after, s);
+    }
+    if (pending === "requested-number") return acknowledgeOperatorExchange(after, s);
+  }
+  if (event.type === "station-finished") { if (event.message === "busy" && state.phase === "station-busy") return { state: { ...state, phase: "listening-cq", logical: "calling-cq", physical: "listening" }, effects: [{ type: "status", label: "CQ" }, { type: "restart-cq" }] }; if (event.message === "exchange" && state.phase === "awaiting-reply") return { state: { ...state, phase: "receiving-exchange", logical: "need-operator-number", physical: "listening" }, effects: [{ type: "status", label: "RECEBENDO INTERCÂMBIO" }] }; if ((event.message === "exchange" || event.message === "number" || event.message === "call") && state.phase === "receiving-exchange") return { state: { ...state, physical: "listening", returnPhase: undefined }, effects: [] }; if (event.message === "tu" && state.phase === "awaiting-tu" && !state.registered) return completeQso(state, s); }
   if (event.type === "station-finished" && event.message === "exchange" && state.phase === "awaiting-reply") return { state: { ...state, phase: "receiving-exchange", logical: "need-operator-number", physical: "listening" }, effects: [{ type: "status", label: "RECEBENDO INTERCÂMBIO" }, startReplyTimeout(state)] };
   if (event.type === "station-finished" && ((event.message === "number" && state.phase === "station-requesting-number") || (event.message === "call" && state.phase === "station-requesting-call") || (event.message === "agn" && state.phase === "station-requesting-again"))) return { state: { ...state, physical: "listening" }, effects: [startReplyTimeout(state)] };
-  if (event.type === "station-finished" && event.message === "final" && state.phase === "awaiting-tu" && !state.registered) return { state: { ...state, phase: "completed", logical: "completed", physical: "listening", registered: true }, effects: [{ type: "status", label: "QSO CONCLUÍDO" }, { type: "register-qso", result: "OK" }, { type: "mark-worked" }, { type: "update-spot-status", status: "WORKED" }, { type: "clear-entry" }] };
+  if (event.type === "station-finished" && event.message === "final" && state.phase === "awaiting-tu" && !state.registered) return completeQso(state, s);
   return { state, effects: [] };
 }

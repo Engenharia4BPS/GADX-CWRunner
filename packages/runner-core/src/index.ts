@@ -6,6 +6,7 @@ export * from "./bandmap.js";
 export * from "./callsigns.js";
 export * from "./callsign-copy.js";
 export * from "./cw-contest-parser.js";
+export * from "./dx-operator.js";
 export * from "./rx-environment.js";
 export * from "./sandp-session.js";
 export * from "./sandp-world.js";
