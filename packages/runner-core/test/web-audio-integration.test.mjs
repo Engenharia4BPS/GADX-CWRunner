@@ -33,12 +33,28 @@ test("atividade de faixa é separada do primeiro plano e cancelada por ele", () 
   assert.match(trainingSource, /planBandActivity/);
 });
 
-test("Esc encerra CW, ambiente e timers; nova sessão restaura uma vez", () => {
-  assert.match(trainingSource, /Escape: \(\) => endSession\(\)/);
+test("Esc interrompe a transmissão sem encerrar o treino", () => {
+  assert.match(trainingSource, /Escape: interruptMacroTransmission/);
+  assert.match(functionLine(trainingSource, "interruptMacroTransmission"), /audioEngine\?\.stop\(\)/);
+  assert.doesNotMatch(functionLine(trainingSource, "interruptMacroTransmission"), /stopAll|endSession/);
   assert.match(functionLine(trainingSource, "stopTransmission"), /audioEngine\?\.stopAll\(\)/);
   assert.match(functionLine(trainingSource, "startSession"), /startEnvironment\(rxEnvironmentSettings\(\), preferences\.toneHz\)/);
   assert.match(rxAudioSource, /this\.clearTimers\(\)/);
   assert.match(rxAudioSource, /this\.finishStop\(\)/);
+});
+
+test("macros aceitam RST e serial tradicionais ou CUT", () => {
+  const expansion = functionLine(trainingSource, "expandedFunctionMessage");
+  assert.match(expansion, /RST-CUT/);
+  assert.match(expansion, /SERIAL-CUT/);
+  assert.match(expansion, /abbreviateCwNumbers/);
+});
+
+test("teclas de função oferecem prévia CW antes de iniciar o treino", () => {
+  assert.match(functionLine(trainingSource, "macro"), /if \(!running\(\)\) \{ await previewMacro\(key\); return; \}/);
+  assert.match(functionLine(trainingSource, "previewMacro"), /await unlockAudio\(\)/);
+  assert.match(functionLine(trainingSource, "previewMacro"), /transmit\(text\)/);
+  assert.match(functionLine(trainingSource, "expandedFunctionMessage"), /preview = false/);
 });
 
 test("preferências do ambiente são persistidas no armazenamento existente", () => {

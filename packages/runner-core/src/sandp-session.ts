@@ -60,8 +60,8 @@ export class SandPSessionController {
     return true;
   }
 
-  pauseCq(): void {
-    this.cancelCurrentCq();
+  pauseCq(stopAudio = true): void {
+    this.cancelCurrentCq(stopAudio);
   }
 
   resumeCq(): boolean {
@@ -87,9 +87,9 @@ export class SandPSessionController {
     }, duration + pause);
   }
 
-  private cancelCurrentCq(): void {
+  private cancelCurrentCq(stopAudio = true): void {
     if (this.cqTimer !== undefined) this.ports.cancelSchedule(this.cqTimer);
     this.cqTimer = undefined;
-    this.ports.stopCw();
+    if (stopAudio) this.ports.stopCw();
   }
 }

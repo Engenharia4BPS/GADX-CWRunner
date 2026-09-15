@@ -73,9 +73,9 @@ export class SpQsoController {
     this.ports.restartCq();
   }
 
-  abort(): void {
+  abort(stopAudio = true): void {
     this.dispatch({ type: "abort" });
-    this.cancel(true);
+    this.cancel(stopAudio);
   }
 
   private dispatch(event: SpQsoEvent): void {
