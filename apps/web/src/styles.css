@@ -134,6 +134,19 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .function-key-help code { color: #005a39; font-weight: 900; }
 .macro-grid button[title] { position: relative; }
 @media (max-width: 600px) { .function-key-fields { grid-template-columns: 1fr; } }
+.morse-reference-button { font: 900 1.18rem/1 "Consolas", "Courier New", monospace !important; letter-spacing: .08em; }
+.morse-reference-modal { width: min(820px, calc(100% - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; }
+.morse-reference-note { margin: 0; padding: 16px 22px 5px; color: #5a6961; font-size: .82rem; }
+.morse-reference-note code { color: #005a39; font: 900 1rem/1 "Consolas", "Courier New", monospace; }
+.morse-reference-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 16px 22px 22px; }
+.morse-reference-group { overflow: hidden; border: 1px solid #cbd5cf; border-radius: 6px; background: #f8faf9; }
+.morse-reference-group:first-child { grid-row: span 2; }
+.morse-reference-group h3 { margin: 0; padding: 9px 12px; background: #e6f0ea; color: #005239; font-size: .74rem; letter-spacing: .07em; }
+.morse-reference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #dfe7e2; }
+.morse-reference-item { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 6px; align-items: center; min-height: 36px; padding: 6px 8px; background: #fff; }
+.morse-reference-item strong { color: #193b2d; font: 900 .88rem/1 "Consolas", "Courier New", monospace; text-align: center; }
+.morse-reference-item code { color: #00613d; font: 800 .78rem/1 "Consolas", "Courier New", monospace; letter-spacing: .04em; white-space: nowrap; }
+@media (max-width: 600px) { .morse-reference-groups { grid-template-columns: 1fr; padding: 14px; }.morse-reference-group:first-child { grid-row: auto; }.morse-reference-item { min-height: 33px; padding: 5px 7px; } }
 .session-metrics .score-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 10px; border: 1px solid #dfe1e0; background: #fdfdfd; }
 .session-metrics .score-card .metric { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: 15px 24px; column-gap: 7px; align-items: center; min-height: 52px; padding: 6px 12px; border: 0; border-left: 1px solid #e1e3e2; }
 .session-metrics .score-card .metric:first-child { border-left: 0; }

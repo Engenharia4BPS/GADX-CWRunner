@@ -8,6 +8,7 @@ export * from "./callsign-copy.js";
 export * from "./cut-numbers.js";
 export * from "./cw-contest-parser.js";
 export * from "./dx-operator.js";
+export * from "./morse-code.js";
 export * from "./rx-environment.js";
 export * from "./sandp-session.js";
 export * from "./sandp-world.js";
@@ -44,41 +45,6 @@ export function clampWpm(value: number): number {
 /** Duração padrão de um dit, em segundos: 1,2 / WPM. */
 export function ditDurationSeconds(wpm: number): number {
   return 1.2 / clampWpm(wpm);
-}
-
-export type MorseElement =
-  | { type: "tone"; dits: 1 | 3 }
-  | { type: "silence"; dits: 1 | 3 | 7 };
-
-const MORSE: Readonly<Record<string, string>> = {
-  A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.",
-  G: "--.", H: "....", I: "..", J: ".---", K: "-.-", L: ".-..",
-  M: "--", N: "-.", O: "---", P: ".--.", Q: "--.-", R: ".-.",
-  S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
-  Y: "-.--", Z: "--..", 0: "-----", 1: ".----", 2: "..---",
-  3: "...--", 4: "....-", 5: ".....", 6: "-....", 7: "--...",
-  8: "---..", 9: "----.", "/": "-..-.",
-};
-
-/** Converte texto suportado em tons e silêncios, sem dependência do navegador. */
-export function encodeMorse(text: string): MorseElement[] {
-  const characters = [...text.toUpperCase()].filter((character) => character === " " || MORSE[character]);
-  const elements: MorseElement[] = [];
-
-  characters.forEach((character, characterIndex) => {
-    if (character === " ") {
-      if (elements.length > 0 && elements.at(-1)?.type !== "silence") elements.push({ type: "silence", dits: 7 });
-      return;
-    }
-    const pattern = MORSE[character];
-    [...pattern].forEach((mark, markIndex) => {
-      elements.push({ type: "tone", dits: mark === "." ? 1 : 3 });
-      if (markIndex < pattern.length - 1) elements.push({ type: "silence", dits: 1 });
-    });
-    const next = characters[characterIndex + 1];
-    if (next && next !== " ") elements.push({ type: "silence", dits: 3 });
-  });
-  return elements;
 }
 
 const PREFIXES = ["PY", "PP", "PR", "PU", "ZY", "LU", "CX", "CE", "OA", "YV"] as const;

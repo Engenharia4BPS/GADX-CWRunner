@@ -57,6 +57,14 @@ test("teclas de função oferecem prévia CW antes de iniciar o treino", () => {
   assert.match(functionLine(trainingSource, "expandedFunctionMessage"), /preview = false/);
 });
 
+test("referência do alfabeto Morse fica disponível no cabeçalho", () => {
+  assert.match(trainingSource, /id="morse-reference"/);
+  assert.match(trainingSource, /id="morse-reference-dialog"/);
+  assert.match(trainingSource, /MORSE_REFERENCE_GROUPS/);
+  assert.match(trainingSource, /MORSE_CODE\[symbol\]/);
+  assert.match(trainingSource, /openMorseReference/);
+});
+
 test("preferências do ambiente são persistidas no armazenamento existente", () => {
   for (const field of ["rxEnvironment", "rxPreset", "bandNoiseLevel", "qrnLevel", "qrmLevel", "stationCount"]) {
     assert.match(trainingSource, new RegExp(field));
