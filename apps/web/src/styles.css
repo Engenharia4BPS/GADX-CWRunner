@@ -113,6 +113,19 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .bandmap-spot.working-other, .bandmap-spot.cooldown { color: #7f9d91; opacity: .55; }
 .bandmap-spot.qsy { color: #71817b; opacity: .35; text-decoration: line-through; }
 .performance-panel.idle { opacity: .25; pointer-events: none; filter: saturate(.45); }
+
+/* Editor de macros das teclas de função. */
+.function-key-settings { display: block; width: calc(100% - 44px); margin: 0 22px 18px; min-height: 42px; border: 1px solid #7d9d8d; border-radius: 5px; background: #edf5f0; color: #004a31; font-size: .78rem; font-weight: 900; letter-spacing: .035em; }
+.function-key-settings:hover { background: #e0eee5; }
+.function-key-modal { width: min(700px, calc(100% - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; }
+.function-key-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 22px; }
+.function-key-fields label { display: grid; gap: 6px; color: #33443c; font-size: .76rem; font-weight: 900; letter-spacing: .04em; }
+.function-key-fields input, .function-key-fields select, .function-key-fields textarea { width: 100%; border: 1px solid #b7c1bb; border-radius: 5px; background: #fff; padding: 8px 10px; color: #14251d; font: 700 .9rem/1.35 "Consolas", "Courier New", monospace; }
+.function-key-fields .function-key-message { grid-column: 1 / -1; }
+.function-key-help { margin: 0 22px 18px; border: 1px solid #cddbd2; border-radius: 5px; padding: 10px 12px; background: #f1f6f3; color: #4e5e55; font-size: .78rem; line-height: 1.5; }
+.function-key-help code { color: #005a39; font-weight: 900; }
+.macro-grid button[title] { position: relative; }
+@media (max-width: 600px) { .function-key-fields { grid-template-columns: 1fr; } }
 .session-metrics .score-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 10px; border: 1px solid #dfe1e0; background: #fdfdfd; }
 .session-metrics .score-card .metric { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: 15px 24px; column-gap: 7px; align-items: center; min-height: 52px; padding: 6px 12px; border: 0; border-left: 1px solid #e1e3e2; }
 .session-metrics .score-card .metric:first-child { border-left: 0; }
